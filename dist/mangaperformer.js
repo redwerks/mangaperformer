@@ -44,8 +44,10 @@
 			err( "jQuery is not loaded." );
 			has.$ = false;
 		} else {
-			var v = $.fn.jquery.split('.');
-			if ( !( parseInt( v[0] ) > 1 || ( parseInt( v[0] ) === 1 && parseInt( v[1] ) >= 8 ) ) ) {
+			// We don't use parseHTML. However we do use jQuery's automatic handling of vendor
+			// prefixes. Both of these were introduced in 1.8. We can't feature test vendor prefix
+			// handling so we'll have to feature test parseHTML instead.
+			if ( !$.Deferred || !$.fn.on || !$.parseHTML ) {
 				err( "jQuery is too old, need at least 1.8." );
 				has.$ = false;
 			}
