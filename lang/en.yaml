@@ -1,0 +1,27 @@
+# MangaPerformer internationalization strings: English
+# Copyright © 2013 – Redwerks Systems Inc.
+# Internationalization texts are CC-0 (https://creativecommons.org/publicdomain/zero/1.0/)
+# Author: Daniel Friesen
+language: English
+button:
+    page:
+        prev: Previous page
+        next: Next page
+    panel:
+        prev: Previous panel
+        next: Next panel
+    spread:
+        1: One page spread
+        2: 2-page spread
+    view:
+        page: Fit page view
+        width: Fit width view
+        panel: Panel view
+    fullscreen:
+        exit: Exit full screen
+        enter: Full screen
+    overview:
+        open: Page overview
+        page:
+            prev: Previous page
+            next: Next page

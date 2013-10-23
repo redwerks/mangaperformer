@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns="http://www.w3.org/2000/svg" height="40" width="40" version="1.1" xmlns:cc="http://creativecommons.org/ns#" xmlns:dc="http://purl.org/dc/elements/1.1/">
+ <g stroke-linejoin="round" stroke="#fff" fill-opacity="0" stroke-width="2" transform="translate(0 -1012.4)">
+  <path d="m7 1047.4v-28h26v28" stroke-linecap="square"/>
+  <rect stroke-dasharray="4, 4" transform="translate(0 1012.4)" height="34" width="34" stroke-linecap="round" y="3" x="3"/>
+ </g>
+</svg>

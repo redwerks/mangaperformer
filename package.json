@@ -1,0 +1,40 @@
+{
+  "name": "mangaperformer",
+  "description": "A client-side JavaScript library for presenting image based manga and comics with an intuitive user interface.",
+  "version": "0.0.0-dev",
+  "author": {
+    "name": "Redwerks Systems Inc.",
+    "url": "http://redwerks.org/"
+  },
+  "contributors": [
+    {
+      "name": "Daniel Friesen",
+      "email": "daniel@nadir-seen-fire.com",
+      "url": "http://danielfriesen.name/"
+    }
+  ],
+  "licenses": [
+    {
+      "type": "Apache License, Version 2.0",
+      "url": "https://www.apache.org/licenses/LICENSE-2.0"
+    },
+    {
+      "type": "GNU General Public License, version 2 or later",
+      "url": "https://www.gnu.org/licenses/old-licenses/gpl-2.0.html"
+    }
+  ],
+  "devDependencies": {
+    "grunt": "~0.4.1",
+    "grunt-contrib-clean": "~0.5.0",
+    "grunt-contrib-concat": "~0.3.0",
+    "grunt-contrib-copy": "~0.4.1",
+    "grunt-contrib-watch": "~0.5.3",
+    "collections": "~0.1.24",
+    "lodash": "~2.0.0",
+    "js-yaml": "~2.1.0",
+    "glob": "~3.2.6",
+    "recess": "~1.1.9",
+    "q": "~0.9.7"
+  },
+  "private": true
+}

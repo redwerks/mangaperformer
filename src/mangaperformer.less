@@ -1,0 +1,229 @@
+/*!
+ * Manga Performer CSS
+ *
+ * This CSS is embedded within mangaperformer.js see
+ * that file for copyright, licensing, and other details.
+ */
+
+@import "util.less";
+
+@p: mangaperformer-;
+@font-family: "HelveticaNeue-Light", "Helvetica Neue Light", "Helvetica Neue", Helvetica, Arial, "Lucida Grande", "FreeSans", sans-serif;
+@z-index: 1000;
+@overlay-bg: #171717;
+@interface-bg: rgba(0, 0, 0, 0.25);
+@slider-loaded-color: rgba(119, 119, 119, 0.35);
+@slider-handle-color: rgba(255, 255, 255, 0.5);
+
+body.mangaperformer-on {
+	overflow: hidden;
+}
+
+.@{p}root,
+.@{p}fauxbox {
+	background-color: @overlay-bg;
+}
+
+.@{p}root {
+	.fill-container;
+	z-index: @z-index;
+	overflow: hidden;
+
+	font-family: @font-family;
+	.font-smooth;
+}
+
+.@{p}viewport {
+	.fill-container;
+	z-index: 10;
+}
+
+.@{p}ui {
+	position: absolute;
+	left: 10%;
+	right: 10%;
+	bottom: 10%;
+	z-index: 100;
+
+	background-color: #111;
+	background-color: @interface-bg;
+	.border-radius(15px);
+	padding: 1.5em;
+	color: #fff;
+
+	pointer-events: none;
+}
+
+.@{p}buttons {
+	position: relative;
+	height: 40px;
+	z-index: 1;
+}
+.@{p}buttonregion {
+	position: absolute;
+	height: 40px;
+	z-index: 2;
+}
+.@{p}buttonregion-left {
+	left: 0;
+	text-align: left;
+}
+.@{p}buttonregion-right {
+	right: 0;
+	text-align: right;
+}
+.@{p}buttonregion-nav {
+	left: 0;
+	right: 0;
+	text-align: center;
+	z-index: 1;
+}
+
+.@{p}buttongroup {
+	.@{p}buttonregion-left & {
+		float: left;
+		margin-right: 1.5em;
+	}
+	.@{p}buttonregion-right & {
+		float: left;
+		margin-left: 1.5em;
+	}
+}
+
+/* @todo Add selectors to switch button direction when lang directionality is different. */
+
+.@{p}button {
+	background: transparent;
+	border: none;
+	.appearance(none);
+	color: #fff;
+	margin: 0;
+	padding: 0;
+	cursor: pointer;
+	pointer-events: auto;
+	vertical-align: middle;
+
+	img {
+		border: none;
+	}
+}
+
+.@{p}slider {
+	margin-top: 1em;
+}
+
+.@{p}slider-bar {
+	position: relative;
+	height: 15px;
+	border: 1px solid transparent;
+	border: 1px solid @slider-loaded-color;
+	.border-radius(10px);
+}
+
+.@{p}slider-loadedbar,
+.@{p}slider-handle {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	height: 100%;
+
+	.border-radius(10px);
+}
+
+.@{p}slider-loadedbar {
+	background: #353535;
+	background-color: @slider-loaded-color;
+}
+
+.@{p}slider-handle {
+	background-color: #fff;
+	background-color: @slider-handle-color;
+	cursor: pointer;
+	pointer-events: auto;
+}
+
+.@{p}panepreview {
+	position: absolute;
+	bottom: 20px;
+	z-index: 150;
+
+	background-color: #fff;
+	padding: 5px;
+	.border-radius(5px);
+
+	pointer-events: none;
+}
+
+.@{p}title {
+	text-align: center;
+	text-shadow: 0 0 5px #000, 0 0 5px #000;
+	margin-top: 1em;
+}
+
+/** Page Overview */
+.@{p}pageoverview-root {
+	.fill-container;
+	z-index: (@z-index + 10);
+	overflow: hidden;
+	opacity: 0.975;
+
+	background-color: @overlay-bg;
+	font-family: @font-family;
+	.font-smooth;
+}
+
+.@{p}pageoverview-header {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	height: 40px;
+	line-height: 40px;
+	background-color: #000;
+	background-color: rgba(0, 0, 0, 0.75);
+	.box-shadow(0 0 2px #000);
+}
+.@{p}pageoverview-title {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: 0; /* @todo rtl */
+	color: #fff;
+	font-size: 1.35em;
+	padding: 0 15px;
+	white-space: nowrap;
+	overflow: hidden;
+	.text-overflow;
+	/* @todo Add an end margin to stop the title before the nav buttons */
+}
+.@{p}pageoverview-nav {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	right: 0; /* @todo rtl */
+}
+.@{p}pageoverview-navbutton {
+	.appearance(none);
+}
+.@{p}pageoverview-prevpage {}
+.@{p}pageoverview-nextpage {}
+
+.@{p}pageoverview-pagecontainer {
+	position: absolute;
+	top: 40px;
+	bottom: 0;
+	left: 0;
+	right: 0;
+}
+
+.@{p}pageoverview-pair {
+	background-color: #fff;
+	.box-shadow(0 0 5px 5px #fff);
+
+/*
+	img {
+		display: block;
+		float: left;
+	}
+*/
+}

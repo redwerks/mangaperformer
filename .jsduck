@@ -1,0 +1,7 @@
+{
+	"--title": "Manga Performer Documentation",
+	"--external": "jQuery,jQuery.Deferred,HTMLImageElement",
+	"--": [
+		"dist/mangaperformer.js"
+	]
+}

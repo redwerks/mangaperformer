@@ -1,0 +1,28 @@
+# MangaPerformer internationalization strings: English Test (en-x-Test)
+# Some dummy translations to test internationalization support.
+# Copyright © 2013 – Redwerks Systems Inc.
+# Internationalization texts are CC-0 (https://creativecommons.org/publicdomain/zero/1.0/)
+# Author: Daniel Friesen
+language: English Test
+button:
+    page:
+        prev: Ｐｒｅｖｉｏｕｓ　ｐａｇｅ
+        next: Ｎｅｘｔ　ｐａｇｅ
+    panel:
+        prev: Ｐｒｅｖｉｏｕｓ　ｐａｎｅl
+        next: Ｎｅｘｔ　ｐａｎｅｌ
+    spread:
+        1: Ｏｎｅ　ｐａｇｅ　ｓｐｒｅａｄ
+        2: ２−ｐａｇｅ　ｓｐｒｅａｄ
+    view:
+        page: Ｆｉｔ ｐａｇｅ　ｖｉｅｗ
+        width: Ｆｉｔ ｗｉｄｔｈ　ｖｉｅｗ
+        panel: Ｐａｎｅｌ　ｖｉｅｗ
+    fullscreen:
+        exit: Ｅｘｉｔ　ｆｕｌｌ　ｓｃｒｅｅｎ
+        enter: Ｆｕｌｌ　ｓｃｒｅｅｎ
+    overview:
+        open: Ｐａｇｅ ｏｖｅｒｖｉｅｗ
+        page:
+            prev: Ｐｒｅｖｉｏｕｓ　ｐａｇｅ
+            next: Ｎｅｘｔ　ｐａｇｅ

@@ -1,0 +1,8 @@
+- Fully featured viewport (ie: zoom + pan and panel focus)
+- Animate page change
+- Support browsers without transformations
+- Fancy on-hover textual tooltips for buttons
+-- Consider also opening/closing them on touch/release
+- Panel view mode
+- Complete panel overview
+- ...
