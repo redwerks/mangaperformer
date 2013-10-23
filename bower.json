@@ -1,0 +1,44 @@
+{
+  "name": "mangaperformer",
+  "description": "A client-side JavaScript library for presenting image based manga and comics with an intuitive user interface.",
+  "version": "0.0.0-dev",
+  "homepage": "https://github.com/redwerks/mangaperformer",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/redwerks/mangaperformer.git"
+  },
+  "authors": [
+    {
+      "name": "Redwerks Systems Inc.",
+      "homepage": "http://redwerks.org/"
+    },
+    {
+      "name": "Daniel Friesen",
+      "email": "daniel@nadir-seen-fire.com",
+      "homepage": "http://danielfriesen.name/"
+    }
+  ],
+  "main": "dist/mangaperformer.js",
+  "license": [
+    "https://www.apache.org/licenses/LICENSE-2.0",
+    "https://www.gnu.org/licenses/old-licenses/gpl-2.0.html"
+  ],
+  "dependencies": {
+    "lodash": "*",
+    "jquery": "*",
+    "jquery.hotkeys": "jeresig/jquery.hotkeys#*",
+    "hammerjs": "*"
+  },
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "bin",
+    "doc",
+    "src",
+    "svg",
+    "Gruntfile.js",
+    "package.json",
+    "ToDo"
+  ]
+}
