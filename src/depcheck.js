@@ -15,7 +15,7 @@
 
 	if ( typeof _ !== 'function'
 		|| typeof _.each !== 'function' ) {
-		err( "Underscore.js is not loaded." );
+		err( "One of either Underscore.js or Lo-Dash is not loaded." );
 		has._ = false;
 	}
 

@@ -35,7 +35,7 @@ module.exports = function(grunt) {
 			"	}).join('') %>" +
 			" *\n" +
 			" * Requires:\n" +
-			" *   - Underscore.js\n" +
+			" *   - Underscore.js or Lo-Dash\n" +
 			" *   - jQuery (jquery.js) >=1.8\n" +
 			" *   - jQuery Hotkeys Plugin (jquery.hotkeys.js)\n" +
 			" *   - Hammer.js + jquery.hammer.js\n" +

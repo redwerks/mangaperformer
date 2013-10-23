@@ -11,7 +11,7 @@
  * @license https://www.gnu.org/licenses/old-licenses/gpl-2.0.html GNU General Public License, version 2 or later
  *
  * Requires:
- *   - Underscore.js
+ *   - Underscore.js or Lo-Dash
  *   - jQuery (jquery.js) >=1.8
  *   - jQuery Hotkeys Plugin (jquery.hotkeys.js)
  *   - Hammer.js + jquery.hammer.js
@@ -34,7 +34,7 @@
 
 		if ( typeof _ !== 'function'
 			|| typeof _.each !== 'function' ) {
-			err( "Underscore.js is not loaded." );
+			err( "One of either Underscore.js or Lo-Dash is not loaded." );
 			has._ = false;
 		}
 
