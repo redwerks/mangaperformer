@@ -25,7 +25,7 @@
   ],
   "dependencies": {
     "lodash": "*",
-    "jquery": "#1",
+    "jquery": "#^1.8",
     "jquery.hotkeys": "jeresig/jquery.hotkeys#*",
     "hammerjs": "*"
   },
