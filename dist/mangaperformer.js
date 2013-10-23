@@ -45,7 +45,7 @@
 			has.$ = false;
 		} else {
 			var v = $.fn.jquery.split('.');
-			if ( parseInt( v[0] ) < 1 || parseInt( v[1] ) < 8 ) {
+			if ( !( parseInt( v[0] ) > 1 || ( parseInt( v[0] ) === 1 && parseInt( v[1] ) >= 8 ) ) ) {
 				err( "jQuery is too old, need at least 1.8." );
 				has.$ = false;
 			}
