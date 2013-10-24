@@ -2,6 +2,7 @@
   "name": "mangaperformer",
   "description": "A client-side JavaScript library for presenting image based manga and comics with an intuitive user interface.",
   "version": "0.0.0-dev",
+  "homepage": "https://github.com/redwerks/mangaperformer",
   "author": {
     "name": "Redwerks Systems Inc.",
     "url": "http://redwerks.org/"
