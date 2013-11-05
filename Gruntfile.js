@@ -103,6 +103,12 @@ module.exports = function(grunt) {
 					'lang/*.yaml'
 				],
 				tasks: ['dist']
+			},
+			'meta-sync': {
+				files: [
+					'package.json',
+				],
+				tasks: ['meta-sync']
 			}
 		}
 	});
@@ -309,7 +315,40 @@ module.exports = function(grunt) {
 	// Full distribution task.
 	grunt.registerTask('dist', ['clean', 'dist-icons', 'dist-js', 'dist-lang']);
 
+	// Sync metadata from package.json into bower.json
+	grunt.registerTask('meta-sync', 'Sync metadata from package.json into bower.json.', function() {
+		var pkg = grunt.file.readJSON('package.json');
+		var bower = grunt.file.readJSON('bower.json');
+
+		// Description
+		bower.description = pkg.description;
+
+		// Version
+		bower.version = pkg.version;
+
+		// Homepage
+		bower.homepage = pkg.homepage;
+
+		// Author and contributors
+		bower.authors = [pkg.author].concat(pkg.contributors).map(function(c) {
+			var author = {};
+			if ( c.name ) author.name = c.name;
+			if ( c.email )author.email = c.email;
+			if ( c.url ) author.homepage = c.url;
+			return author;
+		});
+
+		// License
+		bower.license = pkg.licenses.map(function(license) {
+			return license.url;
+		});
+
+		// Save
+		grunt.file.write('bower.json', JSON.stringify(bower, null, 2) + '\n');
+		grunt.log.writeln('File "bower.json" updated.');
+	});
+
 	// Default task.
-	grunt.registerTask('default', ['dist']);
+	grunt.registerTask('default', ['dist', 'meta-sync']);
 
 };
