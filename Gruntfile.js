@@ -98,7 +98,7 @@ module.exports = function(grunt) {
 			dist: {
 				files: [
 					'src/*.js',
-					'src/mangaperformer.css',
+					'src/*.less',
 					'icons/*.svg',
 					'lang/*.yaml'
 				],
