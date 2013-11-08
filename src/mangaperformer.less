@@ -13,7 +13,7 @@
 @font-size: 14px; // Manga Performer will be loaded in environments it cannot trust so we can't use relative units
 @z-index: 1000;
 @overlay-bg: #171717;
-@interface-bg: rgba(0, 0, 0, 0.25);
+@interface-bg: fade(#000, 25%);
 @slider-loaded-color: rgba(119, 119, 119, 0.35);
 @slider-handle-color: rgba(255, 255, 255, 0.5);
 
@@ -48,7 +48,6 @@ body.mangaperformer-on {
 	bottom: 10%;
 	z-index: 100;
 
-	background-color: #111;
 	background-color: @interface-bg;
 	.border-radius(15px);
 	padding: 1.5em;
