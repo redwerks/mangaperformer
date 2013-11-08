@@ -26,7 +26,7 @@ Viewport.getBestViewport = function() {
 		return new ViewportTransform2D;
 	}
 
-	return ViewportCSS21;
+	return new ViewportCSS21;
 };
 
 /**
