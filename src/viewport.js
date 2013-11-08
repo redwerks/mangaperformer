@@ -135,10 +135,18 @@ ViewportTransform.prototype.refreshPosition = function( pane ) {
 	// Scale the pane to fit
 	transform.push( 'scale(' + scale.toFixed(20) + ')' );
 
+	// Finish string
+	transform = transform.join( ' ' );
+
+	if ( this.use3D ) {
+		// Force hardware acceleration where supported
+		transform += " translate3d(0,0,0)";
+	}
+
 	// Set the CSS
 	pane.$pane
 		.css( 'position', 'absolute' )
-		.css( 'transform', transform.join( ' ' ) )
+		.css( 'transform', transform )
 		.css( 'transform-origin', '0 0' );
 };
 
