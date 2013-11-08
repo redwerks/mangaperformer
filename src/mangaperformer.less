@@ -8,7 +8,9 @@
 @import "util.less";
 
 @p: mangaperformer-;
-@font-family: "HelveticaNeue-Light", "Helvetica Neue Light", "Helvetica Neue", Helvetica, Arial, "Lucida Grande", "FreeSans", sans-serif;
+@font-family: "Lucida Grande", "Lucida Sans Unicode", "Lucida Sans", Geneva, Verdana, sans-serif;
+@font-weight: 400;
+@font-size: 14px; // Manga Performer will be loaded in environments it cannot trust so we can't use relative units
 @z-index: 1000;
 @overlay-bg: #171717;
 @interface-bg: rgba(0, 0, 0, 0.25);
@@ -30,7 +32,8 @@ body.mangaperformer-on {
 	overflow: hidden;
 
 	font-family: @font-family;
-	.font-smooth;
+	font-weight: @font-weight;
+	font-size: @font-size;
 }
 
 .@{p}viewport {
@@ -168,8 +171,6 @@ body.mangaperformer-on {
 	opacity: 0.975;
 
 	background-color: @overlay-bg;
-	font-family: @font-family;
-	.font-smooth;
 }
 
 .@{p}pageoverview-header {
