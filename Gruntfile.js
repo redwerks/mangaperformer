@@ -153,6 +153,24 @@ module.exports = function(grunt) {
 							].join('');
 						}),
 
+						// Output the fingerprints for known language codes
+						Q.fcall(function() {
+							var languageFingerprints = {};
+							Lang.listLanguages()
+								.forEach(function(code) {
+									if ( code === 'en' ) { return; }
+									languageFingerprints[code.toLowerCase()] = Lang.load(code).fingerprint;
+								});
+
+							return [
+								'\n',
+								'// Language fingerprints\n',
+								'i18n.languageFingerprints = ',
+									JSON.stringify(languageFingerprints, undefined, '\t'),
+									';\n'
+							].join('');
+						}),
+
 						// Build the English i18n data then embed it in a JavaScript variable.
 						Q.fcall(function() {
 							return [

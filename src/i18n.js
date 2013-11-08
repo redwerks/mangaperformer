@@ -26,6 +26,15 @@ export var i18n = {
 	languages: ['en'],
 
 	/**
+	 * @property {object}
+	 * An internal map of language codes to fingerprints.
+	 * Used as a cache buster to allow far expiration times for language files.
+	 * @private
+	 * @readonly
+	 */
+	languageFingerprints: {},
+
+	/**
 	 * @property {Object}
 	 * A map of language codes to promises that will be resolved when the language is available.
 	 * @private
@@ -64,7 +73,10 @@ export var i18n = {
 	 * @param {string} lang The language code.
 	 */
 	getLanguageURL: function( lang ) {
-		return MangaPerformer.BASE + '/mangaperformer.lang.' + lang.toLowerCase() + '.js';
+		var query = i18n.languageFingerprints[lang]
+			? '?_=' + encodeURIComponent( i18n.languageFingerprints[lang] )
+			: '';
+		return MangaPerformer.BASE + '/mangaperformer.lang.' + lang.toLowerCase() + '.js' + query;
 	},
 
 	// Should this be @private?
@@ -78,9 +90,15 @@ export var i18n = {
 				//     Or the user pre-loaded the language with a script tag.
 				deferred.resolve();
 			} else {
-				$.getScript( i18n.getLanguageURL( lang ), function() {
-					deferred.resolve();
-				} );
+				$.ajax({
+					url: i18n.getLanguageURL( lang ),
+					type: 'get',
+					dataType: 'script',
+					cache: true,
+					success: function() {
+						deferred.resolve();
+					}
+				});
 			}
 			i18n.loadedLanuages[lang] = deferred.promise();
 		}

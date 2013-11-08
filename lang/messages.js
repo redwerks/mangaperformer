@@ -4,6 +4,7 @@ var _    = require('lodash'),
 	path = require('path'),
 	glob = require('glob'),
 	YAML = require('js-yaml'),
+	crypto = require('crypto'),
 	List = require('collections/list');
 
 function flatten(original) {
@@ -21,11 +22,28 @@ function flatten(original) {
 				q.push([b.concat(k), v]);
 			});
 		} else {
-			m[b.join('.')] = i
+			m[b.join('.')] = i;
 		}
 	}
 
 	return m;
+}
+
+function calculateFingerprint(messages) {
+	var hash = crypto.createHash('sha1');
+
+	Object.keys(messages)
+		.sort()
+		.forEach(function(name) {
+			var n = new Buffer(name).toString('base64'),
+				m = new Buffer(messages[name]).toString('base64');
+			hash.update(n, 'ascii');
+			hash.update(':', 'ascii');
+			hash.update(m, 'ascii');
+			hash.update('\n', 'ascii');
+		});
+
+	return hash.digest('hex').substr(0, 8);
 }
 
 function Lang() {}
@@ -93,6 +111,7 @@ Lang.fromString = function fromString(src, options) {
 	}
 	lang.commentHeader = src.match(/^((#[^\r\n]*(?:\r\n|\n|\r))*)/)[0];
 	lang.tree = YAML.safeLoad(src, {filename: options.filename});
+	lang.fingerprint = calculateFingerprint(lang.messages);
 	return lang;
 };
 
