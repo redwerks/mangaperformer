@@ -69,6 +69,7 @@ module.exports = function(grunt) {
 					'src/depcheck.js',
 					'src/functions.js',
 					'src/namespace.js',
+					'src/supports.js',
 					'src/event.js',
 					'src/i18n.js',
 					'src/extractor.js',

@@ -5,8 +5,7 @@ var create = Object.create || function ( prototype ) {
 		return new Type;
 	},
 	freeze = Object.freeze || function() {},
-	ArrayPush = [].push,
-	supportsSVG = document.implementation.hasFeature( "http://www.w3.org/TR/SVG11/feature#Image", "1.1" );
+	ArrayPush = [].push;
 
 function warn( msg ) {
 	if ( window.console && console.warn ) {

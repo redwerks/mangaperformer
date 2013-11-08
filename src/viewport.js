@@ -18,17 +18,11 @@ function Viewport() {
  * @static
  */
 Viewport.getBestViewport = function() {
-	// Use jQuery to test for 3d or 2d transform support. Thanks to the vendor prefix handling.
-	// jQuery added in 1.8 we don't need to explicitly test individual vendor prefixed versions
-	// of the transform property.
-	var $test = $( '<div></div>' );
-	var translate3d = !!$test.css( 'transform', 'translate3d(0,0,0)' ).css( 'transform' );
-	if ( translate3d ) {
+	if ( Supports.transform3D ) {
 		return new ViewportTransform3D;
 	}
 
-	var translate2d = !!$test.css( 'transform', 'translate(0,0)' ).css( 'transform' );
-	if ( translate2d ) {
+	if ( Supports.transform ) {
 		return new ViewportTransform2D;
 	}
 

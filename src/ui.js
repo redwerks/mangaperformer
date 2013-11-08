@@ -53,7 +53,7 @@ var UI = {
 
 		if ( o.icon ) {
 			// All browsers that support SVG images also support data: URIs
-			var src = supportsSVG
+			var src = Supports.svg
 				? MANGAPERFORMER_ICONS[o.icon]
 				: MangaPerformer.BASE + '/icons/' + o.icon + ".png";
 			$button.find( 'img' ).attr( 'src', src );
