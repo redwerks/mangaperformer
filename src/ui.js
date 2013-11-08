@@ -342,8 +342,7 @@ UI.PaneSlider = function() {
 	 */
 	S.$panePreview = $( '<div class="mangaperformer-panepreview"></div>' )
 		.attr( 'aria-hidden', 'true' )
-		.css( 'visibility', 'collapse' )
-		.css( 'display', 'none' )
+		.css( 'opacity', 0 )
 		.appendTo( S.$bar );
 };
 UI.PaneSlider.prototype = create( UI.Slider.prototype );
@@ -358,10 +357,8 @@ UI.PaneSlider.prototype.setPreview = function( pane ) {
 	var S = this;
 	if ( !pane ) {
 		S.$panePreview
-			.empty()
 			.attr( 'aria-hidden', 'true' )
-			.css( 'visibility', 'collapse' )
-			.css( 'display', 'none' );
+			.css( 'opacity', 0 );
 		return;
 	}
 
@@ -382,10 +379,8 @@ UI.PaneSlider.prototype.setPreview = function( pane ) {
 
 	if ( _.every( images, _.isUndefined ) ) {
 		S.$panePreview
-			.empty()
 			.attr( 'aria-hidden', 'true' )
-			.css( 'visibility', 'collapse' )
-			.css( 'display', 'none' );
+			.css( 'opacity', 0 );
 		return;
 	}
 
@@ -395,8 +390,7 @@ UI.PaneSlider.prototype.setPreview = function( pane ) {
 		.css( S.rtl ? 'left' : 'right', '' )
 		.css( S.rtl ? 'right' : 'left', ( ( ( pane.idx + 0.5 ) / pane.list.length ) * 100 ) + '%' )
 		.attr( 'aria-hidden', 'false' )
-		.css( 'visibility', '' )
-		.css( 'display', '' );
+		.css( 'opacity', 1 );
 
 	Preloader.readyPromise( images )
 		.always( function() {

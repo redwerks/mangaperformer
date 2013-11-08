@@ -23,6 +23,13 @@
 	appearance: @style;
 }
 
+.transition(@transition) {
+	-moz-transition: @transition;
+	-webkit-transition: @transition;
+	-o-transition: @transition;
+	transition: @transition;
+}
+
 // Pattern mixins
 .fill-container(@position: absolute) {
 	position: @position;
