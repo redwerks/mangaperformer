@@ -137,7 +137,27 @@ var UI = {
 					tip.hide( { source: 'mouse' } );
 				}
 			} )
+			.on( 'touchend', function( e ) {
+				// Cancel the touchend to stop touch devices from triggering a fake mouseover after
+				// a tap which would undesirably trigger a mouse based tooltip to open.
+				e.preventDefault();
+			} )
 			.hammer( { hold_timeout: tip.hold } )
+				.on( 'tap', '.mangaperformer-button', function( e ) {
+					// Defer so we don't get an early value of tip.open
+					_.defer( function() {
+						// Reset the retain feature on successful tap (ie: successful button press) if
+						// the tip is closed after tap.
+						// If the tip is no longer open then there is no mouse hovering over the
+						// button keeping the tip open so it was likely a real tap.
+						// We do this to avoid having the retain feature keep flashing the tip open
+						// if the user repeatedly taps the next/prev buttons shortly after having
+						// done a hold that opens the tooltip once.
+						if ( tip.open !== true ) {
+							tip.open = false;
+						}
+					} );
+				} )
 				.on( 'hold', '.mangaperformer-button', function( e ) {
 					if ( e.gesture.pointerType === "mouse" ) { return; }
 
