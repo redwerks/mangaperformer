@@ -18,12 +18,8 @@ function Viewport() {
  * @static
  */
 Viewport.getBestViewport = function() {
-	if ( Supports.transform3D ) {
-		return new ViewportTransform3D;
-	}
-
 	if ( Supports.transform ) {
-		return new ViewportTransform2D;
+		return new ViewportTransform;
 	}
 
 	return new ViewportCSS21;
@@ -77,27 +73,38 @@ Viewport.prototype.refreshPosition = function( pane ) {
 function ViewportCSS21() {
 	Viewport.apply( this, arguments );
 }
-ViewportTransform2D.prototype = create( Viewport.prototype );
+ViewportCSS21.prototype = create( Viewport.prototype );
 
 /**
- * Viewport implementation using CSS3 2D transformations.
+ * Viewport implementation using CSS3 transforms.
  *
  * Using transform for viewport handling eliminates pixel snapping in animations (which degrades)
  * the animation and eliminates the need for the browser to do repaints of the element improving
  * the viewport's performance.
  *
+ * A 3D transform is added to the transform where supported to force some browsers to enable
+ * hardware acceleration making transitions much more efficient.
+ *
  * @extends Viewport
  * @private
  */
-function ViewportTransform2D() {
+function ViewportTransform() {
 	Viewport.apply( this, arguments );
+
+	/**
+	 * @property {boolean}
+	 * Indicates whether the Transform Viewport should add a 3D transformation to the end of
+	 * the transform stack to trigger hardware acceleration.
+	 * Automatically set to the value of Supports.transform3D.
+	 */
+	this.use3D = Supports.transform3D;
 }
-ViewportTransform2D.prototype = create( Viewport.prototype );
+ViewportTransform.prototype = create( Viewport.prototype );
 
 /**
  * @inheritdoc
  */
-ViewportTransform2D.prototype.refreshPosition = function( pane ) {
+ViewportTransform.prototype.refreshPosition = function( pane ) {
 	var Vw = this.$viewport.width(),
 		Vh = this.$viewport.height(),
 		Pw = pane.width,
@@ -135,26 +142,9 @@ ViewportTransform2D.prototype.refreshPosition = function( pane ) {
 		.css( 'transform-origin', '0 0' );
 };
 
-/**
- * Viewport implementation based on ViewportTransform2D that uses 3D transformations instead of
- * transformations 2D (even though the 3D transformations are done in 2D space).
- *
- * Using the 3d versions of transformations forces some browsers to enable hardware acceleration
- * making transitions much more efficient.
- *
- * @extends ViewportTransform2D
- * @private
- */
-function ViewportTransform3D() {
-	ViewportTransform2D.apply( this, arguments );
-}
-ViewportTransform3D.prototype = create( ViewportTransform2D.prototype );
 // @fixme 3D should transform set something like -webkit-backface-visibility: hidden; -webkit-perspective: 1000;
 //   to deal with any potential flickering?
 // or this? http://stackoverflow.com/a/7912696
-// @fixme We still need the ViewportCSS21 vs. ViewportTransform differentiation. But the 2D vs. 3D differentiation
-//   isn't actually needed. All that's needed for hwaccel is to add a dummy 3D transform like translateZ(0) into the
-//   transform. It doesn't need the full use of 3D transformations.
 
 /**
  * A viewport pane that can contain the image of a single page or the pair of images of a page
