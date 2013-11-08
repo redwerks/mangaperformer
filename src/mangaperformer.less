@@ -16,6 +16,7 @@
 @interface-bg: fade(#000, 25%);
 @slider-loaded-color: rgba(119, 119, 119, 0.35);
 @slider-handle-color: rgba(255, 255, 255, 0.5);
+@tooltip-bg: fade(#eee, 80%);
 
 body.mangaperformer-on {
 	overflow: hidden;
@@ -161,6 +162,36 @@ body.mangaperformer-on {
 	text-align: center;
 	text-shadow: 0 0 5px #000, 0 0 5px #000;
 	margin-top: 1em;
+}
+
+/** Tooltip */
+.@{p}tooltip {
+	position: absolute;
+	z-index: 500;
+
+	background-color: #000;
+	background-color: @tooltip-bg;
+	color: #000;
+
+	.border-radius(7px);
+	padding: 0.5em 1em;
+
+	opacity: 0;
+	.transition(opacity 0.2s ease);
+	pointer-events: none;
+
+	&:after {
+		content: "";
+		position: absolute;
+		bottom: -6px;
+		left: 50%;
+		margin-left: -3px;
+		z-index: 1;
+
+		border: 6px solid transparent;
+		border-bottom-width: 0;
+		border-top-color: @tooltip-bg;
+	}
 }
 
 /** Page Overview */

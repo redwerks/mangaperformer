@@ -200,6 +200,8 @@ var Performer = {
 				.on( 'tap', function( ev ) {
 				} );
 
+		UI.buttonTooltipSetup( P.$buttons );
+
 		P.$buttons
 			.on( 'click', 'button.mangaperformer-button', function( e ) {
 				// Special fallback for non-mouse non-clicks that trigger click.

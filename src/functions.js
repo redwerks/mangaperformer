@@ -13,3 +13,7 @@ function warn( msg ) {
 		console.warn( msg );
 	}
 }
+
+function now() {
+	return +new Date;
+}
