@@ -211,7 +211,8 @@ UI.Slider = function() {
 	 * The node containing the slider bar's handle.
 	 * @readonly
 	 */
-	S.$handle = $( '<div class="mangaperformer-slider-handle" tabindex="0"></div>' );
+	S.$handle = $( '<div class="mangaperformer-slider-handle" tabindex="0"></div>' )
+		.css( 'transform', 'translate3d(0,0,0)' );
 	S.$handle.appendTo( S.$bar );
 
 	// Attach events
@@ -433,6 +434,7 @@ UI.PaneSlider = function() {
 	S.$panePreview = $( '<div class="mangaperformer-panepreview"></div>' )
 		.attr( 'aria-hidden', 'true' )
 		.css( 'opacity', 0 )
+		.css( 'transform', 'translate3d(0,0,0)' )
 		.appendTo( S.$bar );
 };
 UI.PaneSlider.prototype = create( UI.Slider.prototype );
