@@ -76,13 +76,16 @@
 			return new Type;
 		},
 		freeze = Object.freeze || function() {},
-		ArrayPush = [].push,
-		supportsSVG = document.implementation.hasFeature( "http://www.w3.org/TR/SVG11/feature#Image", "1.1" );
+		ArrayPush = [].push;
 
 	function warn( msg ) {
 		if ( window.console && console.warn ) {
 			console.warn( msg );
 		}
+	}
+
+	function now() {
+		return +new Date;
 	}
 
 	/**
@@ -99,6 +102,48 @@
 
 	// Special key, should be overridden by the user.
 	MangaPerformer.BASE = '.';
+
+	/**
+	 * Internal object containing information on browser support for various features.
+	 * @singleton
+	 * @private
+	 */
+	var Supports = {};
+
+	(function() {
+		/**
+		 * @property {boolean}
+		 * Indicates support for SVG images in this browser.
+		 * @readonly
+		 */
+		Supports.svg = document.implementation.hasFeature( "http://www.w3.org/TR/SVG11/feature#Image", "1.1" );
+		
+		var $test = $( '<div></div>' );
+
+		/**
+		 * @property {boolean}
+		 * Indicates support for basic CSS Transforms.
+		 * @readonly
+		 */
+		// Use jQuery to test for css3-transforms support. Thanks to the vendor prefix handling.
+		// jQuery added in 1.8 we don't need to explicitly test individual vendor prefixed versions
+		// of the transform property.
+		Supports.transform = !!$test
+			.css( 'transform', '' ) // reset
+			.css( 'transform', 'translate(0,0)' )
+			.css( 'transform' );
+
+		/**
+		 * @property {boolean}
+		 * Indicates support for 3D CSS Transforms.
+		 * @readonly
+		 */
+		Supports.transform3D = !!$test
+			.css( 'transform', '' ) // reset
+			.css( 'transform', 'translate3d(0,0,0)' )
+			.css( 'transform' );
+
+	})();
 
 	/**
 	 * Class implementing an event emitter that can be applied
@@ -284,6 +329,15 @@
 		languages: ['en'],
 
 		/**
+		 * @property {object}
+		 * An internal map of language codes to fingerprints.
+		 * Used as a cache buster to allow far expiration times for language files.
+		 * @private
+		 * @readonly
+		 */
+		languageFingerprints: {},
+
+		/**
 		 * @property {Object}
 		 * A map of language codes to promises that will be resolved when the language is available.
 		 * @private
@@ -322,7 +376,10 @@
 		 * @param {string} lang The language code.
 		 */
 		getLanguageURL: function( lang ) {
-			return MangaPerformer.BASE + '/mangaperformer.lang.' + lang.toLowerCase() + '.js';
+			var query = i18n.languageFingerprints[lang]
+				? '?_=' + encodeURIComponent( i18n.languageFingerprints[lang] )
+				: '';
+			return MangaPerformer.BASE + '/mangaperformer.lang.' + lang.toLowerCase() + '.js' + query;
 		},
 
 		// Should this be @private?
@@ -336,9 +393,15 @@
 					//     Or the user pre-loaded the language with a script tag.
 					deferred.resolve();
 				} else {
-					$.getScript( i18n.getLanguageURL( lang ), function() {
-						deferred.resolve();
-					} );
+					$.ajax({
+						url: i18n.getLanguageURL( lang ),
+						type: 'get',
+						dataType: 'script',
+						cache: true,
+						success: function() {
+							deferred.resolve();
+						}
+					});
 				}
 				i18n.loadedLanuages[lang] = deferred.promise();
 			}
@@ -1110,11 +1173,101 @@
 
 			if ( o.icon ) {
 				// All browsers that support SVG images also support data: URIs
-				var src = supportsSVG
+				var src = Supports.svg
 					? MANGAPERFORMER_ICONS[o.icon]
 					: MangaPerformer.BASE + '/icons/' + o.icon + ".png";
 				$button.find( 'img' ).attr( 'src', src );
 			}
+		},
+
+		buttonTooltipSetup: function( $root ) {
+			var tip = {
+				delay: 500,
+				retain: 800,
+				hold: 50,
+
+				$tip: $( '<div class="mangaperformer-tooltip"></div>' ).appendTo( Performer.$root ),
+				timer: undefined,
+				open: false,
+				state: undefined,
+
+				show: function( button, o ) {
+					o = $.extend( {
+						// Wait a period of time before displaying tip
+						delay: false,
+						// Allow mouse out to close the tip
+						mouse: true
+					}, o );
+
+					if ( tip.open === true || tip.open >= now() - tip.retain ) {
+						o.delay = false;
+					}
+
+					if ( o.delay > 0 ) {
+						clearTimeout( tip.timer );
+						tip.timer = _.delay( tip.show, o.delay, button, $.extend( {}, o, { delay: false } ) );
+						return;
+					} else {
+						tip.timer = undefined;
+					}
+
+					tip.$tip.text( button.getAttribute( 'aria-label' ) );
+
+					var offset = $( button ).offset();
+					offset.top -= $( button ).height();
+					offset.top -= 5;
+					offset.left -= tip.$tip.width() / 2;
+					tip.$tip.css( offset );
+
+					tip.$tip.css( 'opacity', 1 );
+					tip.open = true;
+					tip.state = o;
+				},
+				hide: function( o ) {
+					o = $.extend( {
+						source: 'manual'
+					}, o );
+
+					// Ignore mouse triggered hides if the open options specified that mouse was not permitted
+					if ( o.source === 'mouse' && tip.state && !tip.state.mouse ) {
+						return;
+					}
+
+					clearTimeout( tip.timer );
+					tip.open = now();
+					tip.state = undefined;
+
+					tip.$tip.css( 'opacity', 0 );
+				}
+			};
+
+			$root
+				.on( 'mouseover mouseout', function( e ) {
+					var button = $( e.target ).closest( '.mangaperformer-button', this )[0],
+						relatedButton = $( e.relatedTarget ).closest( '.mangaperformer-button', this )[0];
+					
+					// Ignore mouse moves between elements within the same button
+					if ( button == relatedButton ) {
+						return;
+					}
+
+					if ( e.type === 'mouseover' ) {
+						tip.show( button, { delay: tip.delay } );
+					} else {
+						tip.hide( { source: 'mouse' } );
+					}
+				} )
+				.hammer( { hold_timeout: tip.hold } )
+					.on( 'hold', '.mangaperformer-button', function( e ) {
+						if ( e.gesture.pointerType === "mouse" ) { return; }
+
+						tip.show( this, { delay: tip.delay, mouse: false } );
+					} )
+					.on( 'release', '.mangaperformer-button', function( e ) {
+						if ( e.gesture.pointerType === "mouse" ) { return; }
+
+						tip.hide( { source: e.gesture.pointerType });
+					} );
 		}
 	};
 
@@ -1178,7 +1331,8 @@
 		 * The node containing the slider bar's handle.
 		 * @readonly
 		 */
-		S.$handle = $( '<div class="mangaperformer-slider-handle" tabindex="0"></div>' );
+		S.$handle = $( '<div class="mangaperformer-slider-handle" tabindex="0"></div>' )
+			.css( 'transform', 'translate3d(0,0,0)' );
 		S.$handle.appendTo( S.$bar );
 
 		// Attach events
@@ -1399,8 +1553,8 @@
 		 */
 		S.$panePreview = $( '<div class="mangaperformer-panepreview"></div>' )
 			.attr( 'aria-hidden', 'true' )
-			.css( 'visibility', 'collapse' )
-			.css( 'display', 'none' )
+			.css( 'opacity', 0 )
+			.css( 'transform', 'translate3d(0,0,0)' )
 			.appendTo( S.$bar );
 	};
 	UI.PaneSlider.prototype = create( UI.Slider.prototype );
@@ -1415,10 +1569,8 @@
 		var S = this;
 		if ( !pane ) {
 			S.$panePreview
-				.empty()
 				.attr( 'aria-hidden', 'true' )
-				.css( 'visibility', 'collapse' )
-				.css( 'display', 'none' );
+				.css( 'opacity', 0 );
 			return;
 		}
 
@@ -1439,10 +1591,8 @@
 
 		if ( _.every( images, _.isUndefined ) ) {
 			S.$panePreview
-				.empty()
 				.attr( 'aria-hidden', 'true' )
-				.css( 'visibility', 'collapse' )
-				.css( 'display', 'none' );
+				.css( 'opacity', 0 );
 			return;
 		}
 
@@ -1452,8 +1602,7 @@
 			.css( S.rtl ? 'left' : 'right', '' )
 			.css( S.rtl ? 'right' : 'left', ( ( ( pane.idx + 0.5 ) / pane.list.length ) * 100 ) + '%' )
 			.attr( 'aria-hidden', 'false' )
-			.css( 'visibility', '' )
-			.css( 'display', '' );
+			.css( 'opacity', 1 );
 
 		Preloader.readyPromise( images )
 			.always( function() {
@@ -1488,21 +1637,11 @@
 	 * @static
 	 */
 	Viewport.getBestViewport = function() {
-		// Use jQuery to test for 3d or 2d transform support. Thanks to the vendor prefix handling.
-		// jQuery added in 1.8 we don't need to explicitly test individual vendor prefixed versions
-		// of the transform property.
-		var $test = $( '<div></div>' );
-		var translate3d = !!$test.css( 'transform', 'translate3d(0,0,0)' ).css( 'transform' );
-		if ( translate3d ) {
-			return new ViewportTransform3D;
+		if ( Supports.transform ) {
+			return new ViewportTransform;
 		}
 
-		var translate2d = !!$test.css( 'transform', 'translate(0,0)' ).css( 'transform' );
-		if ( translate2d ) {
-			return new ViewportTransform2D;
-		}
-
-		return ViewportCSS21;
+		return new ViewportCSS21;
 	};
 
 	/**
@@ -1553,27 +1692,38 @@
 	function ViewportCSS21() {
 		Viewport.apply( this, arguments );
 	}
-	ViewportTransform2D.prototype = create( Viewport.prototype );
+	ViewportCSS21.prototype = create( Viewport.prototype );
 
 	/**
-	 * Viewport implementation using CSS3 2D transformations.
+	 * Viewport implementation using CSS3 transforms.
 	 *
 	 * Using transform for viewport handling eliminates pixel snapping in animations (which degrades)
 	 * the animation and eliminates the need for the browser to do repaints of the element improving
 	 * the viewport's performance.
 	 *
+	 * A 3D transform is added to the transform where supported to force some browsers to enable
+	 * hardware acceleration making transitions much more efficient.
+	 *
 	 * @extends Viewport
 	 * @private
 	 */
-	function ViewportTransform2D() {
+	function ViewportTransform() {
 		Viewport.apply( this, arguments );
+
+		/**
+		 * @property {boolean}
+		 * Indicates whether the Transform Viewport should add a 3D transformation to the end of
+		 * the transform stack to trigger hardware acceleration.
+		 * Automatically set to the value of Supports.transform3D.
+		 */
+		this.use3D = Supports.transform3D;
 	}
-	ViewportTransform2D.prototype = create( Viewport.prototype );
+	ViewportTransform.prototype = create( Viewport.prototype );
 
 	/**
 	 * @inheritdoc
 	 */
-	ViewportTransform2D.prototype.refreshPosition = function( pane ) {
+	ViewportTransform.prototype.refreshPosition = function( pane ) {
 		var Vw = this.$viewport.width(),
 			Vh = this.$viewport.height(),
 			Pw = pane.width,
@@ -1604,33 +1754,24 @@
 		// Scale the pane to fit
 		transform.push( 'scale(' + scale.toFixed(20) + ')' );
 
+		// Finish string
+		transform = transform.join( ' ' );
+
+		if ( this.use3D ) {
+			// Force hardware acceleration where supported
+			transform += " translate3d(0,0,0)";
+		}
+
 		// Set the CSS
 		pane.$pane
 			.css( 'position', 'absolute' )
-			.css( 'transform', transform.join( ' ' ) )
+			.css( 'transform', transform )
 			.css( 'transform-origin', '0 0' );
 	};
 
-	/**
-	 * Viewport implementation based on ViewportTransform2D that uses 3D transformations instead of
-	 * transformations 2D (even though the 3D transformations are done in 2D space).
-	 *
-	 * Using the 3d versions of transformations forces some browsers to enable hardware acceleration
-	 * making transitions much more efficient.
-	 *
-	 * @extends ViewportTransform2D
-	 * @private
-	 */
-	function ViewportTransform3D() {
-		ViewportTransform2D.apply( this, arguments );
-	}
-	ViewportTransform3D.prototype = create( ViewportTransform2D.prototype );
 	// @fixme 3D should transform set something like -webkit-backface-visibility: hidden; -webkit-perspective: 1000;
 	//   to deal with any potential flickering?
 	// or this? http://stackoverflow.com/a/7912696
-	// @fixme We still need the ViewportCSS21 vs. ViewportTransform differentiation. But the 2D vs. 3D differentiation
-	//   isn't actually needed. All that's needed for hwaccel is to add a dummy 3D transform like translateZ(0) into the
-	//   transform. It doesn't need the full use of 3D transformations.
 
 	/**
 	 * A viewport pane that can contain the image of a single page or the pair of images of a page
@@ -2412,6 +2553,8 @@
 					.on( 'tap', function( ev ) {
 					} );
 
+			UI.buttonTooltipSetup( P.$buttons );
+
 			P.$buttons
 				.on( 'click', 'button.mangaperformer-button', function( e ) {
 					// Special fallback for non-mouse non-clicks that trigger click.
@@ -2986,6 +3129,11 @@
 		"en-x-test"
 	];
 
+	// Language fingerprints
+	i18n.languageFingerprints = {
+		"en-x-test": "c28b9980"
+	};
+
 	// Canonical English message texts
 	i18n.messages.en = {
 		"language": "English",
@@ -3006,7 +3154,7 @@
 	};
 
 	// src/mangaperformer.less
-	var MANGAPERFORMER_CSS = "/*!\n * Manga Performer CSS\n *\n * This CSS is embedded within mangaperformer.js see\n * that file for copyright, licensing, and other details.\n */\n\nbody.mangaperformer-on {\n  overflow: hidden;\n}\n\n.mangaperformer-root,\n.mangaperformer-fauxbox {\n  background-color: #171717;\n}\n\n.mangaperformer-root {\n  position: absolute;\n  top: 0;\n  right: 0;\n  bottom: 0;\n  left: 0;\n  z-index: 1000;\n  width: 100%;\n  height: 100%;\n  overflow: hidden;\n  font-family: \"HelveticaNeue-Light\", \"Helvetica Neue Light\", \"Helvetica Neue\", Helvetica, Arial, \"Lucida Grande\", \"FreeSans\", sans-serif;\n  -webkit-font-smoothing: antialiased;\n  -webkit-text-stroke: 1px transparent;\n  font-smooth: always;\n}\n\n.mangaperformer-viewport {\n  position: absolute;\n  top: 0;\n  right: 0;\n  bottom: 0;\n  left: 0;\n  z-index: 10;\n  width: 100%;\n  height: 100%;\n}\n\n.mangaperformer-ui {\n  position: absolute;\n  right: 10%;\n  bottom: 10%;\n  left: 10%;\n  z-index: 100;\n  padding: 1.5em;\n  color: #fff;\n  pointer-events: none;\n  background-color: #111;\n  background-color: rgba(0, 0, 0, 0.25);\n  -webkit-border-radius: 15px;\n     -moz-border-radius: 15px;\n          border-radius: 15px;\n}\n\n.mangaperformer-buttons {\n  position: relative;\n  z-index: 1;\n  height: 40px;\n}\n\n.mangaperformer-buttonregion {\n  position: absolute;\n  z-index: 2;\n  height: 40px;\n}\n\n.mangaperformer-buttonregion-left {\n  left: 0;\n  text-align: left;\n}\n\n.mangaperformer-buttonregion-right {\n  right: 0;\n  text-align: right;\n}\n\n.mangaperformer-buttonregion-nav {\n  right: 0;\n  left: 0;\n  z-index: 1;\n  text-align: center;\n}\n\n.mangaperformer-buttonregion-left .mangaperformer-buttongroup {\n  float: left;\n  margin-right: 1.5em;\n}\n\n.mangaperformer-buttonregion-right .mangaperformer-buttongroup {\n  float: left;\n  margin-left: 1.5em;\n}\n\n/* @todo Add selectors to switch button direction when lang directionality is different. */\n\n.mangaperformer-button {\n  padding: 0;\n  margin: 0;\n  color: #fff;\n  vertical-align: middle;\n  pointer-events: auto;\n  cursor: pointer;\n  background: transparent;\n  border: none;\n  -webkit-appearance: none;\n     -moz-appearance: none;\n          appearance: none;\n}\n\n.mangaperformer-button img {\n  border: none;\n}\n\n.mangaperformer-slider {\n  margin-top: 1em;\n}\n\n.mangaperformer-slider-bar {\n  position: relative;\n  height: 15px;\n  border: 1px solid transparent;\n  border: 1px solid rgba(119, 119, 119, 0.35);\n  -webkit-border-radius: 10px;\n     -moz-border-radius: 10px;\n          border-radius: 10px;\n}\n\n.mangaperformer-slider-loadedbar,\n.mangaperformer-slider-handle {\n  position: absolute;\n  top: 0;\n  bottom: 0;\n  height: 100%;\n  -webkit-border-radius: 10px;\n     -moz-border-radius: 10px;\n          border-radius: 10px;\n}\n\n.mangaperformer-slider-loadedbar {\n  background: #353535;\n  background-color: rgba(119, 119, 119, 0.35);\n}\n\n.mangaperformer-slider-handle {\n  pointer-events: auto;\n  cursor: pointer;\n  background-color: #fff;\n  background-color: rgba(255, 255, 255, 0.5);\n}\n\n.mangaperformer-panepreview {\n  position: absolute;\n  bottom: 20px;\n  z-index: 150;\n  padding: 5px;\n  pointer-events: none;\n  background-color: #fff;\n  -webkit-border-radius: 5px;\n     -moz-border-radius: 5px;\n          border-radius: 5px;\n}\n\n.mangaperformer-title {\n  margin-top: 1em;\n  text-align: center;\n  text-shadow: 0 0 5px #000, 0 0 5px #000;\n}\n\n/** Page Overview */\n\n.mangaperformer-pageoverview-root {\n  position: absolute;\n  top: 0;\n  right: 0;\n  bottom: 0;\n  left: 0;\n  z-index: 1010;\n  width: 100%;\n  height: 100%;\n  overflow: hidden;\n  font-family: \"HelveticaNeue-Light\", \"Helvetica Neue Light\", \"Helvetica Neue\", Helvetica, Arial, \"Lucida Grande\", \"FreeSans\", sans-serif;\n  -webkit-font-smoothing: antialiased;\n  background-color: #171717;\n  opacity: 0.975;\n  -webkit-text-stroke: 1px transparent;\n  font-smooth: always;\n}\n\n.mangaperformer-pageoverview-header {\n  position: absolute;\n  top: 0;\n  right: 0;\n  left: 0;\n  height: 40px;\n  line-height: 40px;\n  background-color: #000;\n  background-color: rgba(0, 0, 0, 0.75);\n  -webkit-box-shadow: 0 0 2px #000000;\n     -moz-box-shadow: 0 0 2px #000000;\n          box-shadow: 0 0 2px #000000;\n}\n\n.mangaperformer-pageoverview-title {\n  position: absolute;\n  top: 0;\n  bottom: 0;\n  left: 0;\n  padding: 0 15px;\n  overflow: hidden;\n  font-size: 1.35em;\n  color: #fff;\n  -o-text-overflow: ellipsis;\n     text-overflow: ellipsis;\n  white-space: nowrap;\n}\n\n.mangaperformer-pageoverview-nav {\n  position: absolute;\n  top: 0;\n  right: 0;\n  bottom: 0;\n}\n\n.mangaperformer-pageoverview-navbutton {\n  -webkit-appearance: none;\n     -moz-appearance: none;\n          appearance: none;\n}\n\n.mangaperformer-pageoverview-pagecontainer {\n  position: absolute;\n  top: 40px;\n  right: 0;\n  bottom: 0;\n  left: 0;\n}\n\n.mangaperformer-pageoverview-pair {\n  background-color: #fff;\n  -webkit-box-shadow: 0 0 5px 5px #ffffff;\n     -moz-box-shadow: 0 0 5px 5px #ffffff;\n          box-shadow: 0 0 5px 5px #ffffff;\n}";
+	var MANGAPERFORMER_CSS = "/*!\n * Manga Performer CSS\n *\n * This CSS is embedded within mangaperformer.js see\n * that file for copyright, licensing, and other details.\n */\n\nbody.mangaperformer-on {\n  overflow: hidden;\n}\n\n.mangaperformer-root,\n.mangaperformer-fauxbox {\n  background-color: #171717;\n}\n\n.mangaperformer-root {\n  position: absolute;\n  top: 0;\n  right: 0;\n  bottom: 0;\n  left: 0;\n  z-index: 1000;\n  width: 100%;\n  height: 100%;\n  overflow: hidden;\n  font-family: \"Lucida Grande\", \"Lucida Sans Unicode\", \"Lucida Sans\", Geneva, Verdana, sans-serif;\n  font-size: 14px;\n  font-weight: 400;\n}\n\n.mangaperformer-viewport {\n  position: absolute;\n  top: 0;\n  right: 0;\n  bottom: 0;\n  left: 0;\n  z-index: 10;\n  width: 100%;\n  height: 100%;\n}\n\n.mangaperformer-ui {\n  position: absolute;\n  right: 10%;\n  bottom: 10%;\n  left: 10%;\n  z-index: 100;\n  padding: 1.5em;\n  color: #fff;\n  pointer-events: none;\n  background-color: rgba(0, 0, 0, 0.25);\n  -webkit-border-radius: 15px;\n     -moz-border-radius: 15px;\n          border-radius: 15px;\n}\n\n.mangaperformer-buttons {\n  position: relative;\n  z-index: 1;\n  height: 40px;\n}\n\n.mangaperformer-buttonregion {\n  position: absolute;\n  z-index: 2;\n  height: 40px;\n}\n\n.mangaperformer-buttonregion-left {\n  left: 0;\n  text-align: left;\n}\n\n.mangaperformer-buttonregion-right {\n  right: 0;\n  text-align: right;\n}\n\n.mangaperformer-buttonregion-nav {\n  right: 0;\n  left: 0;\n  z-index: 1;\n  text-align: center;\n}\n\n.mangaperformer-buttonregion-left .mangaperformer-buttongroup {\n  float: left;\n  margin-right: 1.5em;\n}\n\n.mangaperformer-buttonregion-right .mangaperformer-buttongroup {\n  float: left;\n  margin-left: 1.5em;\n}\n\n/* @todo Add selectors to switch button direction when lang directionality is different. */\n\n.mangaperformer-button {\n  padding: 0;\n  margin: 0;\n  color: #fff;\n  vertical-align: middle;\n  pointer-events: auto;\n  cursor: pointer;\n  background: transparent;\n  border: none;\n  -webkit-appearance: none;\n     -moz-appearance: none;\n          appearance: none;\n}\n\n.mangaperformer-button img {\n  border: none;\n}\n\n.mangaperformer-slider {\n  margin-top: 1em;\n}\n\n.mangaperformer-slider-bar {\n  position: relative;\n  height: 15px;\n  border: 1px solid transparent;\n  border: 1px solid rgba(119, 119, 119, 0.35);\n  -webkit-border-radius: 10px;\n     -moz-border-radius: 10px;\n          border-radius: 10px;\n}\n\n.mangaperformer-slider-loadedbar,\n.mangaperformer-slider-handle {\n  position: absolute;\n  top: 0;\n  bottom: 0;\n  height: 100%;\n  -webkit-border-radius: 10px;\n     -moz-border-radius: 10px;\n          border-radius: 10px;\n}\n\n.mangaperformer-slider-loadedbar {\n  background: #353535;\n  background-color: rgba(119, 119, 119, 0.35);\n}\n\n.mangaperformer-slider-handle {\n  pointer-events: auto;\n  cursor: pointer;\n  background-color: #fff;\n  background-color: rgba(255, 255, 255, 0.5);\n}\n\n.mangaperformer-panepreview {\n  position: absolute;\n  bottom: 20px;\n  z-index: 150;\n  padding: 5px;\n  pointer-events: none;\n  background-color: #fff;\n  -webkit-border-radius: 5px;\n     -moz-border-radius: 5px;\n          border-radius: 5px;\n  -webkit-transition: opacity 0.2s ease;\n     -moz-transition: opacity 0.2s ease;\n       -o-transition: opacity 0.2s ease;\n          transition: opacity 0.2s ease;\n}\n\n.mangaperformer-title {\n  margin-top: 1em;\n  text-align: center;\n  text-shadow: 0 0 5px #000, 0 0 5px #000;\n}\n\n/** Tooltip */\n\n.mangaperformer-tooltip {\n  position: absolute;\n  z-index: 500;\n  padding: 0.5em 1em;\n  color: #000;\n  pointer-events: none;\n  background-color: #000;\n  background-color: rgba(238, 238, 238, 0.8);\n  -webkit-border-radius: 7px;\n     -moz-border-radius: 7px;\n          border-radius: 7px;\n  opacity: 0;\n  -webkit-transition: opacity 0.2s ease;\n     -moz-transition: opacity 0.2s ease;\n       -o-transition: opacity 0.2s ease;\n          transition: opacity 0.2s ease;\n}\n\n.mangaperformer-tooltip:after {\n  position: absolute;\n  bottom: -6px;\n  left: 50%;\n  z-index: 1;\n  margin-left: -3px;\n  border: 6px solid transparent;\n  border-top-color: rgba(238, 238, 238, 0.8);\n  border-bottom-width: 0;\n  content: \"\";\n}\n\n/** Page Overview */\n\n.mangaperformer-pageoverview-root {\n  position: absolute;\n  top: 0;\n  right: 0;\n  bottom: 0;\n  left: 0;\n  z-index: 1010;\n  width: 100%;\n  height: 100%;\n  overflow: hidden;\n  background-color: #171717;\n  opacity: 0.975;\n}\n\n.mangaperformer-pageoverview-header {\n  position: absolute;\n  top: 0;\n  right: 0;\n  left: 0;\n  height: 40px;\n  line-height: 40px;\n  background-color: #000;\n  background-color: rgba(0, 0, 0, 0.75);\n  -webkit-box-shadow: 0 0 2px #000000;\n     -moz-box-shadow: 0 0 2px #000000;\n          box-shadow: 0 0 2px #000000;\n}\n\n.mangaperformer-pageoverview-title {\n  position: absolute;\n  top: 0;\n  bottom: 0;\n  left: 0;\n  padding: 0 15px;\n  overflow: hidden;\n  font-size: 1.35em;\n  color: #fff;\n  -o-text-overflow: ellipsis;\n     text-overflow: ellipsis;\n  white-space: nowrap;\n}\n\n.mangaperformer-pageoverview-nav {\n  position: absolute;\n  top: 0;\n  right: 0;\n  bottom: 0;\n}\n\n.mangaperformer-pageoverview-navbutton {\n  -webkit-appearance: none;\n     -moz-appearance: none;\n          appearance: none;\n}\n\n.mangaperformer-pageoverview-pagecontainer {\n  position: absolute;\n  top: 40px;\n  right: 0;\n  bottom: 0;\n  left: 0;\n}\n\n.mangaperformer-pageoverview-pair {\n  background-color: #fff;\n  -webkit-box-shadow: 0 0 5px 5px #ffffff;\n     -moz-box-shadow: 0 0 5px 5px #ffffff;\n          box-shadow: 0 0 5px 5px #ffffff;\n}";
 
 	// Cleaned up SVG icons from icons/
 	var MANGAPERFORMER_ICONS = {
