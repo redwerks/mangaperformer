@@ -473,6 +473,7 @@
 	 * @ignore
 	 */
 	function getConstrained( idx ) {
+		/* jshint validthis:true */
 		if ( idx < 0 ) {
 			return this[0];
 		}
@@ -800,6 +801,7 @@
 		var pages = this.pages,
 			pairs = this.pagePairs;
 
+		/* jshint -W004 */
 		for ( var i = 0, l = pairs.length; i < l; i++ ) {
 			var pair = pairs[i];
 			pair.list = pair.pairs = pairs;
@@ -834,6 +836,7 @@
 			// We need to deal with _img and _thumb before we can actually freeze a page.
 			// freeze( page );
 		}
+		/* jshint +W004 */
 
 		// Freeze the lists
 		freeze( pairs );
@@ -1264,7 +1267,9 @@
 					// a tap which would undesirably trigger a mouse based tooltip to open.
 					e.preventDefault();
 				} )
+				/* jshint -W106 */
 				.hammer( { hold_timeout: tip.hold } )
+				/* jshint +W106 */
 					.on( 'tap', '.mangaperformer-button', function( e ) {
 						// Defer so we don't get an early value of tip.open
 						_.defer( function() {
@@ -2328,6 +2333,10 @@
 								} );
 						} );
 				} );
+
+			// This code is unfinished (was being converted into the above unfinished block) so for now we're
+			// just going to add a little hack to stop linters from considering stuff in here to be errors.
+			var rowCounts, $pairs;
 
 			var index = 0;
 			_.each( rowCounts, function( o, row ) {

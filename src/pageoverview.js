@@ -430,6 +430,10 @@ PageOverview.events = {
 					} );
 			} );
 
+		// This code is unfinished (was being converted into the above unfinished block) so for now we're
+		// just going to add a little hack to stop linters from considering stuff in here to be errors.
+		var rowCounts, $pairs;
+
 		var index = 0;
 		_.each( rowCounts, function( o, row ) {
 			var gap = ( overviewWidth - ( o.boxWidth * o.boxLimit ) ) / o.boxLimit,

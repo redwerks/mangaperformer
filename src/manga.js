@@ -105,6 +105,7 @@ Manga.prototype.freeze = function() {
 	var pages = this.pages,
 		pairs = this.pagePairs;
 
+	/* jshint -W004 */
 	for ( var i = 0, l = pairs.length; i < l; i++ ) {
 		var pair = pairs[i];
 		pair.list = pair.pairs = pairs;
@@ -139,6 +140,7 @@ Manga.prototype.freeze = function() {
 		// We need to deal with _img and _thumb before we can actually freeze a page.
 		// freeze( page );
 	}
+	/* jshint +W004 */
 
 	// Freeze the lists
 	freeze( pairs );

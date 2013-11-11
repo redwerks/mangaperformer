@@ -1,0 +1,18 @@
+{
+	"undef": true,
+	"trailing": true,
+	"laxbreak": true,
+	"loopfunc": true,
+	"smarttabs": true,
+	"camelcase": true,
+	"curly": true,
+	"newcap": true,
+	"supernew": true,
+	"immed": true,
+	"browser": true,
+	"jquery": true,
+	"globals": {
+		"console": false,
+		"_": false
+	}
+}

@@ -1,4 +1,4 @@
-/* jshint node: true */
+/* jshint node: true, laxbreak: true */
 var _      = require('lodash'),
 	Q      = require('q'),
 	path   = require('path'),
@@ -57,6 +57,10 @@ module.exports = function(grunt) {
 				cwd: 'icons/',
 				src: ['*.svg', '*.png'],
 				dest: 'dist/icons/'
+			},
+			jshintrc: {
+				src: ['dist.jshintrc'],
+				dest: 'dist/.jshintrc'
 			}
 		},
 
@@ -97,6 +101,15 @@ module.exports = function(grunt) {
 			},
 		},
 
+		jshint: {
+			options: {
+				jshintrc: true,
+			},
+			src: ['src/*.js'],
+			dist: ['dist/<%= pkg.name %>.js'],
+			grunt: 'Gruntfile.js'
+		},
+
 		watch: {
 			dist: {
 				files: [
@@ -119,6 +132,7 @@ module.exports = function(grunt) {
 	grunt.loadNpmTasks('grunt-contrib-clean');
 	grunt.loadNpmTasks('grunt-contrib-concat');
 	grunt.loadNpmTasks('grunt-contrib-copy');
+	grunt.loadNpmTasks('grunt-contrib-jshint');
 	grunt.loadNpmTasks('grunt-contrib-watch');
 
 	grunt.registerMultiTask('mangaperformer-js', 'Build mangaperformer.js file.', function() {
@@ -333,12 +347,13 @@ module.exports = function(grunt) {
 		});
 	});
 
-	grunt.registerTask('dist-icons', ['copy']);
+	grunt.registerTask('dist-icons', ['copy:icons']);
+	grunt.registerTask('dist-jshintrc', ['copy:jshintrc']);
 	grunt.registerTask('dist-js', ['mangaperformer-js']);
 	grunt.registerTask('dist-lang', ['mangaperformer-lang']);
 
 	// Full distribution task.
-	grunt.registerTask('dist', ['clean', 'dist-icons', 'dist-js', 'dist-lang']);
+	grunt.registerTask('dist', ['clean:dist', 'dist-icons', 'dist-jshintrc', 'dist-js', 'dist-lang']);
 
 	// Sync metadata from package.json into bower.json
 	grunt.registerTask('meta-sync', 'Sync metadata from package.json into bower.json.', function() {
@@ -372,6 +387,12 @@ module.exports = function(grunt) {
 		grunt.file.write('bower.json', JSON.stringify(bower, null, 2) + '\n');
 		grunt.log.writeln('File "bower.json" updated.');
 	});
+
+	// JSHint aliases
+	grunt.registerTask('lint:src', ['jshint:src']);
+	grunt.registerTask('lint:dist', ['jshint:dist']);
+	grunt.registerTask('lint:grunt', ['jshint:grunt']);
+	grunt.registerTask('lint', ['jshint']);
 
 	// Default task.
 	grunt.registerTask('default', ['dist', 'meta-sync']);

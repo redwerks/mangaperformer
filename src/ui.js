@@ -143,7 +143,9 @@ var UI = {
 				// a tap which would undesirably trigger a mouse based tooltip to open.
 				e.preventDefault();
 			} )
+			/* jshint -W106 */
 			.hammer( { hold_timeout: tip.hold } )
+			/* jshint +W106 */
 				.on( 'tap', '.mangaperformer-button', function( e ) {
 					// Defer so we don't get an early value of tip.open
 					_.defer( function() {

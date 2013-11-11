@@ -6,6 +6,7 @@
  * @ignore
  */
 function getConstrained( idx ) {
+	/* jshint validthis:true */
 	if ( idx < 0 ) {
 		return this[0];
 	}
