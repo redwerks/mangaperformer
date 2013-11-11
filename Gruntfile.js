@@ -83,6 +83,10 @@ module.exports = function(grunt) {
 					'src/manga.js',
 					'src/preloader.js',
 					'src/ui.js',
+					'src/ui/button.js',
+					'src/ui/tooltip.js',
+					'src/ui/slider.js',
+					'src/ui/paneslider.js',
 					'src/viewport.js',
 					'src/pageoverview.js',
 					'src/performer.js'
@@ -105,7 +109,7 @@ module.exports = function(grunt) {
 			options: {
 				jshintrc: true,
 			},
-			src: ['src/*.js'],
+			src: ['src/*.js', 'src/**/*.js'],
 			dist: ['dist/<%= pkg.name %>.js'],
 			grunt: 'Gruntfile.js'
 		},
@@ -114,6 +118,7 @@ module.exports = function(grunt) {
 			dist: {
 				files: [
 					'src/*.js',
+					'src/**/*.js',
 					'src/*.less',
 					'icons/*.svg',
 					'lang/*.yaml'
