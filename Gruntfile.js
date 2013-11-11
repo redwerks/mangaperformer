@@ -54,8 +54,9 @@ module.exports = function(grunt) {
 		copy: {
 			icons: {
 				expand: true,
-				src: ['icons/*.svg', 'icons/*.png'],
-				dist: 'dist/icons/'
+				cwd: 'icons/',
+				src: ['*.svg', '*.png'],
+				dest: 'dist/icons/'
 			}
 		},
 
