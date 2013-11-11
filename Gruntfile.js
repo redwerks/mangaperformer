@@ -347,13 +347,13 @@ module.exports = function(grunt) {
 		});
 	});
 
-	grunt.registerTask('dist-icons', ['copy:icons']);
-	grunt.registerTask('dist-jshintrc', ['copy:jshintrc']);
-	grunt.registerTask('dist-js', ['mangaperformer-js']);
-	grunt.registerTask('dist-lang', ['mangaperformer-lang']);
+	grunt.registerTask('dist:icons', ['copy:icons']);
+	grunt.registerTask('dist:jshintrc', ['copy:jshintrc']);
+	grunt.registerTask('dist:js', ['mangaperformer-js']);
+	grunt.registerTask('dist:lang', ['mangaperformer-lang']);
 
 	// Full distribution task.
-	grunt.registerTask('dist', ['clean:dist', 'dist-icons', 'dist-jshintrc', 'dist-js', 'dist-lang']);
+	grunt.registerTask('dist', ['clean:dist', 'dist:icons', 'dist:jshintrc', 'dist:js', 'dist:lang']);
 
 	// Sync metadata from package.json into bower.json
 	grunt.registerTask('meta-sync', 'Sync metadata from package.json into bower.json.', function() {
