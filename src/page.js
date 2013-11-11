@@ -1,3 +1,4 @@
+"use strict";
 
 /**
  * Common implementation of getConstrained that'll be used

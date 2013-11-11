@@ -1,3 +1,4 @@
+"use strict";
 
 /**
  * Class implementing an event emitter that can be applied

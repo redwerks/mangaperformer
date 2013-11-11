@@ -1,3 +1,4 @@
+"use strict";
 
 /**
  * A class that renders an overview of all the pages in the manga/comic.

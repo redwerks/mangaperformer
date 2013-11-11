@@ -1,3 +1,4 @@
+"use strict";
 
 /**
  * Object in charge of rendering and performing a manga/comic.

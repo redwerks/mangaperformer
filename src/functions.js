@@ -1,3 +1,4 @@
+"use strict";
 
 var create = Object.create || function ( prototype ) {
 		function Type() {}

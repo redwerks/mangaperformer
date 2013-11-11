@@ -1,3 +1,4 @@
+"use strict";
 
 /**
  * A class that handles preloading the thumbnails and images

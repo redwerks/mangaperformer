@@ -42,7 +42,8 @@ module.exports = function(grunt) {
 			" */\n",
 
 		fnwrapper: {
-			open: '(function( window, $, _, undefined ) {',
+			open: '(function( window, $, _, undefined ) {\n'
+				+ '	"use strict";',
 			close: '})( window, jQuery, _ );'
 		},
 
@@ -136,7 +137,10 @@ module.exports = function(grunt) {
 					var promises = _.flatten([
 						// Concatenate JS files
 						f.src.map(function(filename) {
-							return Q.nfcall(fs.readFile, filename, "utf-8");
+							return Q.nfcall(fs.readFile, filename, "utf-8")
+								.then(function(src) {
+									return src.replace(/^"use strict";\n?/, '');
+								});
 						}),
 
 						// Output the list of known language codes.

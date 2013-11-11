@@ -17,6 +17,7 @@
  *   - Hammer.js + jquery.hammer.js
  */
 (function( window, $, _, undefined ) {
+	"use strict";
 
 	(function() {
 		var ok = true,

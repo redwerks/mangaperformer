@@ -1,3 +1,4 @@
+"use strict";
 
 /**
  * Class representing an entire manga/comic including its pages and metadata such as directionality.

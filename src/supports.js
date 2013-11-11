@@ -1,3 +1,4 @@
+"use strict";
 
 /**
  * Internal object containing information on browser support for various features.

@@ -1,3 +1,4 @@
+"use strict";
 
 /**
  * Object in charge of internationalization text.

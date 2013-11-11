@@ -1,3 +1,4 @@
+"use strict";
 
 /**
  * Namespace for the Manga Performer library.
