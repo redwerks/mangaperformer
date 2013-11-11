@@ -42,8 +42,8 @@ module.exports = function(grunt) {
 			" */\n",
 
 		fnwrapper: {
-			open: '(function( window, $, _, undefined ) {\n'
-				+ '	"use strict";',
+			open: '(function( window, $, _, undefined ) {\n' +
+				'	"use strict";',
 			close: '})( window, jQuery, _ );'
 		},
 
@@ -198,7 +198,7 @@ module.exports = function(grunt) {
 							};
 							recess(filename, opts, function(err, obj) {
 								if ( err ) {
-									console.warn(err[0])
+									console.warn(err[0]);
 									deffered.reject(new Error(err[0].message));
 									return;
 								}
@@ -236,14 +236,15 @@ module.exports = function(grunt) {
 
 					return Q.all(promises)
 						.then(function(sources) {
-							var exports = [],
-								sources = sources
-									.join('')
-									.replace(/(\s*)\bexport\s+((?:function|var)\s+([_$0-9a-zA-Z]+))\b/gm,
-										function(m, a, b, name) {
-											exports.push(name);
-											return a + b;
-										});
+							var exports = [];
+
+							sources = sources
+								.join('')
+								.replace(/(\s*)\bexport\s+((?:function|var)\s+([_$0-9a-zA-Z]+))\b/gm,
+									function(m, a, b, name) {
+										exports.push(name);
+										return a + b;
+									});
 
 							sources += [
 								'\n',
@@ -298,34 +299,34 @@ module.exports = function(grunt) {
 					return !_.contains(options.skip, code.toLowerCase());
 				})
 				.forEach(function(code) {
-					var lang = Lang.load(code)
-					var src = [
-						'/*!',
-						lang.commentHeader
-							.replace(/\s*$/, '')
-							.split(/(?:\r\n|\r|\n)/)
-							.map(function(line) {
-								return line
-									.replace(/^#\s*/, '')
-									.replace(/^[Aa]uthor:\s*/, '@author ')
-									.replace(/^/, ' * ')
-									.replace(/\s$/, '')
-									// Just some random paranoia ;)
-									.replace(/\*\//g, '');
-							})
-							.join('\n'),
-						' */',
-						[
-							'MangaPerformer.i18n.messages[',
-							JSON.stringify(lang.code),
-							'] = ',
-							JSON.stringify(lang.messages, undefined, '\t'),
-							';'
-						].join(''),
-						'' // Trailing newline at end of file
-					].join('\n');
+					var lang = Lang.load(code),
+						src = [
+							'/*!',
+							lang.commentHeader
+								.replace(/\s*$/, '')
+								.split(/(?:\r\n|\r|\n)/)
+								.map(function(line) {
+									return line
+										.replace(/^#\s*/, '')
+										.replace(/^[Aa]uthor:\s*/, '@author ')
+										.replace(/^/, ' * ')
+										.replace(/\s$/, '')
+										// Just some random paranoia ;)
+										.replace(/\*\//g, '');
+								})
+								.join('\n'),
+							' */',
+							[
+								'MangaPerformer.i18n.messages[',
+								JSON.stringify(lang.code),
+								'] = ',
+								JSON.stringify(lang.messages, undefined, '\t'),
+								';'
+							].join(''),
+							'' // Trailing newline at end of file
+						].join('\n'),
+						dest = path.join(f.dest, options.destPattern.replace('{code}', lang.code));
 
-					var dest = path.join(f.dest, options.destPattern.replace('{code}', lang.code));
 					grunt.file.write(dest, src);
 					grunt.log.writeln('File "' + dest + '" created.');
 				});

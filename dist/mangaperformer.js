@@ -1838,7 +1838,7 @@
 	/**
 	 * Refresh the position of the pane. Updating the width, height,
 	 * and positional css.
-	 */ 
+	 */
 	Pane.prototype.refreshPosition = function() {
 		// Just hide the pane if no real position has been set
 		if ( !this.position ) {
