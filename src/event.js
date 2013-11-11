@@ -56,8 +56,8 @@ Events.prototype.off = function( eventNames, handlers ) {
 	if ( _.isFunction( handlers ) ) {
 		handlers = [handlers];
 	}
-	_.each( $.trim( eventNames ).split( /\s+/ ), function( eventName ) {
-		eventName = '_event_' + eventName;
+	_.each( $.trim( eventNames ).split( /\s+/ ), function( evName ) {
+		var eventName = '_event_' + evName;
 		if ( !_.has( self, eventName ) ) {
 			return;
 		}
@@ -84,7 +84,7 @@ Events.prototype.off = function( eventNames, handlers ) {
 Events.prototype.emitWith = function( eventNames, context, args ) {
 	var self = this;
 	_.each( $.trim( eventNames ).split( /\s+/ ), function( evName ) {
-		eventName = '_event_' + evName;
+		var eventName = '_event_' + evName;
 		if ( !_.has( self, eventName ) ) {
 			return;
 		}

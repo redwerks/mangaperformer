@@ -278,7 +278,7 @@ UI.Slider = function() {
 				}
 
 				// var newPane = P.pane.list.getConstrained( P.pane.idx + paneOffset );
-				var newIndex = Math.max( 0, Math.min( S.size, S.index + paneOffset ))
+				var newIndex = Math.max( 0, Math.min( S.size, S.index + paneOffset ) );
 
 				if ( ev.type === 'dragend' ) {
 					// End the drag

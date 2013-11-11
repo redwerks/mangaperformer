@@ -202,8 +202,8 @@
 		if ( _.isFunction( handlers ) ) {
 			handlers = [handlers];
 		}
-		_.each( $.trim( eventNames ).split( /\s+/ ), function( eventName ) {
-			eventName = '_event_' + eventName;
+		_.each( $.trim( eventNames ).split( /\s+/ ), function( evName ) {
+			var eventName = '_event_' + evName;
 			if ( !_.has( self, eventName ) ) {
 				return;
 			}
@@ -230,7 +230,7 @@
 	Events.prototype.emitWith = function( eventNames, context, args ) {
 		var self = this;
 		_.each( $.trim( eventNames ).split( /\s+/ ), function( evName ) {
-			eventName = '_event_' + evName;
+			var eventName = '_event_' + evName;
 			if ( !_.has( self, eventName ) ) {
 				return;
 			}
@@ -962,14 +962,15 @@
 						promise.reject();
 					} );
 
-				// We don't need 
-				function wait() {
+				// We don't need the image to completely load so use a timeout
+				// to resolve immediately once the image's natural size is available.
+				var wait = function wait() {
 					if ( img.naturalHeight > 0 && img.naturalWidth > 0 ) {
 						promise.resolve();
 					} else {
 						timeout = setTimeout( wait, 500 );
 					}
-				}
+				};
 				timeout = setTimeout( wait, 10 );
 
 				// Use our own promise to clear the events and timeouts
@@ -1398,7 +1399,7 @@
 					}
 
 					// var newPane = P.pane.list.getConstrained( P.pane.idx + paneOffset );
-					var newIndex = Math.max( 0, Math.min( S.size, S.index + paneOffset ))
+					var newIndex = Math.max( 0, Math.min( S.size, S.index + paneOffset ) );
 
 					if ( ev.type === 'dragend' ) {
 						// End the drag
@@ -2055,7 +2056,7 @@
 
 					var page = O.live.manga.pages[idx];
 					if ( !( page instanceof Page ) ) {
-						throw new Exception( "Reader error: Failed to acquire page instance using page index from tapped image." );
+						throw new Error( "Reader error: Failed to acquire page instance using page index from tapped image." );
 					}
 					
 					var pane = P.pageSpread === 2

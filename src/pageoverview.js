@@ -157,7 +157,7 @@ PageOverview.setup = function() {
 
 				var page = O.live.manga.pages[idx];
 				if ( !( page instanceof Page ) ) {
-					throw new Exception( "Reader error: Failed to acquire page instance using page index from tapped image." );
+					throw new Error( "Reader error: Failed to acquire page instance using page index from tapped image." );
 				}
 				
 				var pane = P.pageSpread === 2

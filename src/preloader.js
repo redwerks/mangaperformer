@@ -107,14 +107,15 @@ Preloader.readyPromise = function( images ) {
 					promise.reject();
 				} );
 
-			// We don't need 
-			function wait() {
+			// We don't need the image to completely load so use a timeout
+			// to resolve immediately once the image's natural size is available.
+			var wait = function wait() {
 				if ( img.naturalHeight > 0 && img.naturalWidth > 0 ) {
 					promise.resolve();
 				} else {
 					timeout = setTimeout( wait, 500 );
 				}
-			}
+			};
 			timeout = setTimeout( wait, 10 );
 
 			// Use our own promise to clear the events and timeouts
