@@ -1,11 +1,11 @@
 /* jshint node: true, laxbreak: true */
 var _      = require('lodash'),
-	Q      = require('q'),
-	path   = require('path'),
-	fs     = require('fs'),
-	grunt  = require('grunt'),
-	recess = require('recess'),
-	Lang   = require('./lang/messages');
+    Q      = require('q'),
+    path   = require('path'),
+    fs     = require('fs'),
+    grunt  = require('grunt'),
+    recess = require('recess'),
+    Lang   = require('./lang/messages');
 
 // Grunt tasks don't need heavy performance, so make errors more helpful.
 Q.longStackSupport = true;
