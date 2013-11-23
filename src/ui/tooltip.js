@@ -72,7 +72,9 @@ UI.buttonTooltipSetup = function( $root ) {
 			}
 
 			if ( e.type === 'mouseover' ) {
-				tip.show( button, { delay: tip.delay } );
+				if ( button ) {
+					tip.show( button, { delay: tip.delay } );
+				}
 			} else {
 				tip.hide( { source: 'mouse' } );
 			}
