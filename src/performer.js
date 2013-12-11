@@ -47,87 +47,56 @@ var Performer = {
 		 * @readonly
 		 */
 		P.viewport = Viewport.getBestViewport();
-		P.viewport.$viewport.appendTo( P.$root );
 
 		/**
-		 * @property {jQuery} $ui
-		 * The UI node containing the buttons, slider, and other interface elements.
+		 * @property {UI.ReaderInterface} ui
+		 * The UI element containing the buttons, slider, and other interface elements.
 		 * @readonly
 		 */
-		P.$ui = $( '<div class="mangaperformer-ui"></div>' );
-
-		/**
-		 * @property {jQuery} $buttons
-		 * The node containing the hierarchy of button elements.
-		 * @readonly
-		 */
-		P.$buttons = $( '<div class="mangaperformer-buttons"></div>' );
-		$.each( [ 'left', 'nav', 'right' ], function( i, key ) {
-			// Each button region
-			var $region = $( '<div class="mangaperformer-buttonregion"></div>' )
-				.addClass( 'mangaperformer-buttonregion-' + key );
-			$.each( P.buttons[key], function( i, group ) {
-				// Button groupings
-				if ( !$.isArray( group ) ) {
-					group = [ group ];
-				}
-				var $group = $( '<div class="mangaperformer-buttongroup"></div>' );
-				$.each( group, function( i, button ) {
-					if ( _.isFunction( button.support ) ) {
-						if ( !button.support() ) {
-							// Skip this button if it's declared no support in this browser
-							return;
+		P.ui = new UI.ReaderInterface( {
+			layout: new UI.FloatingReaderLayout(),
+			on: {
+				state: {
+					pagespread: function( spread ) {
+						P.setPageSpread( spread );
+					},
+					'view-mode': function( viewMode ) {
+						P.setViewMode( viewMode );
+					}
+				},
+				nav: {
+					nav: function( direction ) {
+						if ( direction === 'prev' ) {
+							P.prevPane();
+						} else {
+							P.nextPane();
 						}
 					}
-
-					// Each button
-					var $button = UI.button( { size: key === 'nav' ? 40 : 34 } )
-						.addClass( 'mangaperformer-button-' + button.name )
-						.data( 'button', button );
-
-					if ( button.refresh ) {
-						P.on( button.refresh, function() {
-							P.refreshButton( $button );
-						} );
+				},
+				activate: {
+					overview: function() {
+						// @fixme This could probably be a bit cleaner
+						PageOverview.open( P.manga );
+					},
+					fullscreen: function() {
+						if ( UI.Fullscreen.check() ) {
+							UI.Fullscreen.cancel();
+						} else {
+							UI.Fullscreen.request( P.$root[0] );
+						}
 					}
-
-					P.refreshButton( $button );
-
-					$button.appendTo( $group );
-				} );
-				$group.appendTo( $region );
-			} );
-			$region.appendTo( P.$buttons );
+				}
+			}
 		} );
+		P.ui.registerComponent( 'viewport', P.viewport );
 
-		P.$buttons.appendTo( P.$ui );
-
-		/**
-		 * @property {UI.PaneSlider} slider
-		 * A UI.PaneSlider instance used for the slider and pane preview in the ui.
-		 * @readonly
-		 */
-		P.slider = new UI.PaneSlider();
-		P.slider.appendTo( P.$ui );
-
-		/**
-		 * @property {jQuery} $title
-		 * The node containing the title text for the manga/comic.
-		 * @readonly
-		 */
-		P.$title = $( '<div class="mangaperformer-title"></div>' );
-		P.$title.appendTo( P.$ui );
-
-		P.$ui.appendTo( P.$root );
+		P.ui.applyTo( P.$root );
 
 		P.$root.appendTo( $( 'body' ) );
 
 		// Event handling
 		i18n.on( 'languagechanged', function() {
-			P.$buttons.find( '.mangaperformer-button' )
-				.each( function() {
-					P.refreshButton( $( this ) );
-				} );
+			P.ui.refreshAll();
 		} );
 
 		// @fixme These events should probably only be bound when the performer is enabled
@@ -138,14 +107,15 @@ var Performer = {
 			}
 		} );
 
-		$( document ).on( 'fullscreenchange mozfullscreenchange webkitfullscreenchange', function() {
+		UI.Fullscreen.on( function() {
 			/**
-			 * @event fullscreenchange
-			 * Fired when the browser's native fullscreenchange event has fired indicating the browser
-			 * has entered or exited fullscreen.
-			 * Duplicated into the Performer's event system for easy refresing of the fullscreen button.
-			 */
+			* @event fullscreenchange
+			* Fired when the browser's native fullscreenchange event has fired indicating the browser
+			* has entered or exited fullscreen.
+			* Duplicated into the Performer's event system for easy refresing of the fullscreen button.
+			*/
 			P.emit( 'fullscreenchange' );
+			P.ui.refreshFor( 'fullscreenchange' );
 		} );
 
 		// @fixme Document or root?
@@ -170,14 +140,14 @@ var Performer = {
 				}
 			},
 			'f': function() {
-				if ( !P.supportsFullscreen() ) {
+				if ( !UI.Fullscreen.supported() ) {
 					return true;
 				}
 
-				if ( P.isFullscreen() ) {
-					P.cancelFullscreen();
+				if ( UI.Fullscreen.check() ) {
+					UI.Fullscreen.cancel();
 				} else {
-					P.requestFullscreen( P.$root[0] );
+					UI.Fullscreen.request( P.$root[0] );
 				}
 			},
 			'1': function() {
@@ -201,42 +171,8 @@ var Performer = {
 				.on( 'tap', function( ev ) {
 				} );
 
-		UI.buttonTooltipSetup( P.$buttons );
 
-		P.$buttons
-			.on( 'click', 'button.mangaperformer-button', function( e ) {
-				// Special fallback for non-mouse non-clicks that trigger click.
-				// Such as activating a focused button with a keyboard.
-				var $button = $( this );
-				if ( $button.data( 'noclick' ) ) {
-					$button.data( 'noclick', false );
-					return;
-				}
-
-				var button = $button.data( 'button' );
-				if ( _.isFunction( button.activate ) ) {
-					button.activate.call( $button[0] );
-				}
-			} )
-			.hammer()
-				// Tap gesture, handles mice, touches, pointers, etc...
-				.on( 'tap', function( ev ) {
-					var $button = $( ev.target ).closest( 'button.mangaperformer-button', this );
-					if ( !$button.length ) { return; }
-
-					// Kill a click happening after the tap
-					$button.data( 'noclick', true );
-
-					var button = $button.data( 'button' );
-					if ( _.isFunction( button.activate ) ) {
-						button.activate.call( $button[0] );
-					}
-
-					// When the button is focused as a result of pointer/touch interactions blur it when finished.
-					$button[0].blur();
-				} );
-
-		P.slider
+		P.ui.get( 'slider' )
 			.on( 'userstart', function() {
 				this.previewOn = true;
 			} )
@@ -335,10 +271,10 @@ var Performer = {
 		// @todo Handle things like exiting currently playing manga/comics
 		P.enable();
 
-		P.slider.setLoaded( 0 );
+		P.ui.get( 'slider' ).setLoaded( 0 );
 		var preloader = manga.getPreloader();
 		preloader.on( 'progress', function( e ) {
-			P.slider.setLoaded( e.progress );
+			P.ui.get( 'slider' ).setLoaded( e.progress );
 		} );
 		preloader.preload();
 
@@ -375,16 +311,9 @@ var Performer = {
 		if ( manga.title ) {
 			// After enabling, if manga has title set the page title to it
 			document.title = manga.title;
-			P.$title
-				.text( manga.title )
-				.attr( 'aria-hidden', 'false' )
-				.css( 'visibility', '' )
-				.css( 'display', '' );
+			P.ui.state.set( 'title', manga.title );
 		} else {
-			P.$title
-				.attr( 'aria-hidden', 'true' )
-				.css( 'visibility', 'collapse' )
-				.css( 'display', 'none' );
+			P.ui.state.set( 'title', false );
 		}
 
 		/**
@@ -394,6 +323,7 @@ var Performer = {
 		 * @param {Manga} e.manga The new manga/comic being performed.
 		 */
 		P.emit( 'mangachanged', { manga: manga } );
+		P.ui.state.set( 'manga', manga );
 	},
 
 	/**
@@ -442,7 +372,7 @@ var Performer = {
 		// @fixme This only adds a pane. It doesn't remove the old one or do any transitions.
 		P.setViewMode( P.viewMode );
 
-		P.slider
+		P.ui.get( 'slider' )
 			.setDirection( P.manga.rtl ? 'rtl' : 'ltr' )
 			.setSize( pane.list.length )
 			.setIndex( pane.idx )
@@ -521,6 +451,7 @@ var Performer = {
 			 * @param {Performer.ViewMode} e.viewMode The new view mode.
 			 */
 			P.emit( 'viewmodechanged', { viewMode: P.viewMode } );
+			P.ui.state.set( 'viewMode', P.viewMode );
 		}
 		return oldMode;
 	},
@@ -562,187 +493,6 @@ var Performer = {
 			P.emit( 'pagespreadchanged', { pageSpread: P.pageSpread } );
 		}
 		return oldSpread;
-	},
-
-	/**
-	 * Check to see if this browser supports the fullscreen API.
-	 * @return {boolean}
-	 */
-	supportsFullscreen: function() {
-		return 'fullscreenElement' in document
-			|| 'mozFullScreenElement' in document
-			|| 'webkitFullscreenElement' in document;
-	},
-
-	/**
-	 * Check to see if the document is currently fullscreen.
-	 * @return {boolean}
-	 */
-	isFullscreen: function() {
-		return document.fullscreenElement
-			|| document.mozFullScreenElement
-			|| document.webkitFullscreenElement
-			|| false;
-	},
-
-	/**
-	 * Try to enable fullscreen on the element.
-	 * @param {HTMLElement} elem The element to fullscreen.
-	 */
-	requestFullscreen: function( elem ) {
-		if ( elem.requestFullscreen ) {
-			elem.requestFullscreen();
-		} else if ( elem.mozRequestFullScreen ) {
-			elem.mozRequestFullScreen();
-		} else if ( elem.webkitRequestFullscreen ) {
-			elem.webkitRequestFullscreen( Element.ALLOW_KEYBOARD_INPUT );
-		}
-	},
-
-	/**
-	 * Exit fullscreen if in fullscreen mode.
-	 */
-	cancelFullscreen: function() {
-		if ( document.cancelFullScreen ) {
-			document.cancelFullScreen();
-		} else if ( document.mozCancelFullScreen ) {
-			document.mozCancelFullScreen();
-		} else if ( document.webkitCancelFullScreen ) {
-			document.webkitCancelFullScreen();
-		}
-	},
-
-	buttons: {
-		left: [
-			[
-				{
-					name: "pagespread-1",
-					icon: "1-page-spread",
-					label: __.f( "button.spread.1" ),
-					activate: function() {
-						var P = Performer;
-						P.setPageSpread( 1 );
-					}
-				},
-				{
-					name: "pagespread-2",
-					icon: "2-page-spread",
-					label: __.f( "button.spread.2" ),
-					activate: function() {
-						var P = Performer;
-						P.setPageSpread( 2 );
-					}
-				}
-			],
-			[
-				{
-					name: "view-pagefit",
-					icon: "fullpage-view",
-					label: __.f( "button.view.page" ),
-					activate: function() {
-						var P = Performer;
-						P.setViewMode( P.ViewMode.PAGEFIT );
-					}
-				},
-				{
-					name: "view-pagewidth",
-					icon: "pagewidth-view",
-					label: __.f( "button.view.width" ),
-					activate: function() {
-						var P = Performer;
-						P.setViewMode( P.ViewMode.PAGEWIDTH );
-					}
-				},
-				{
-					name: "view-panel",
-					icon: "panel-view",
-					label: __.f( "button.view.panel" ),
-					activate: function() {}
-				}
-			]
-		],
-		nav: [[
-			{
-				name: "prev",
-				refresh: 'mangachanged viewmodechanged',
-				icon: function() {
-					var P = Performer;
-					return P.manga && P.manga.rtl
-						? "nav-right"
-						: "nav-left";
-				},
-				label: function() {
-					var P = Performer;
-					return P.viewMode === P.ViewMode.PANEL
-						? __.t( "button.panel.prev" )
-						: __.t( "button.page.prev" );
-				},
-				activate: function() {
-					var P = Performer;
-					P.prevPane();
-				}
-			},
-			{
-				name: "next",
-				refresh: 'mangachanged viewmodechanged',
-				icon: function() {
-					var P = Performer;
-					return P.manga && P.manga.rtl
-						? "nav-left"
-						: "nav-right";
-				},
-				label: function() {
-					var P = Performer;
-					return P.viewMode === P.ViewMode.PANEL
-						? __.t( "button.panel.next" )
-						: __.t( "button.page.next" );
-				},
-				activate: function() {
-					var P = Performer;
-					P.nextPane();
-				}
-			}
-		]],
-		right: [
-			{
-				name: "overview",
-				icon: "page-overview",
-				label: __.f( "button.overview.open" ),
-				activate: function() {
-					// @fixme This could probably be a bit cleaner
-					var P = Performer;
-					PageOverview.open( P.manga );
-				}
-			},
-			{
-				name: "fullscreen",
-				refresh: 'fullscreenchange',
-				icon: function() {
-					var P = Performer;
-					return P.isFullscreen()
-						? "undo-fullscreen"
-						: "do-fullscreen";
-				},
-				label: function() {
-					var P = Performer;
-					return P.isFullscreen()
-						? __.t( "button.fullscreen.exit" )
-						: __.t( "button.fullscreen.enter" );
-				},
-				support: function() {
-					var P = Performer;
-					return P.supportsFullscreen();
-				},
-				activate: function() {
-					var P = Performer;
-					if ( P.isFullscreen() ) {
-						P.cancelFullscreen();
-					} else {
-						P.requestFullscreen( P.$root[0] );
-					}
-				}
-			}
-		]
 	}
 };
 

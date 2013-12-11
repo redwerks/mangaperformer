@@ -40,6 +40,14 @@ Viewport.prototype.init = function() {
 };
 
 /**
+ * Method to return the viewport DOM. Allows the viewport to be treated like a UI component.
+ * @return {jQuery} The DOM node
+ */
+Viewport.prototype.getDOM = function() {
+	return this.$viewport;
+};
+
+/**
  * Add a new pane to the viewport. Sets the new pane as the current pane.
  *
  * @param {HTMLImageElement[]} images The image(s) to display in the viewport.

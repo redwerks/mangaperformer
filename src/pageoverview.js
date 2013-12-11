@@ -93,18 +93,18 @@ PageOverview.setup = function() {
 	 * The button node that navigates to the previous page of the page overview.
 	 * @readonly
 	 */
-	O.$prevPage = UI.button( { size: 30, label: __.f( "button.overview.page.prev" ), icon: 'nav-up' } )
-		.addClass( 'mangaperformer-pageoverview-navbutton mangaperformer-pageoverview-prevpage' )
-		.appendTo( O.$nav );
+	// O.$prevPage = UI.button( { size: 30, label: __.f( "button.overview.page.prev" ), icon: 'nav-up' } )
+	// 	.addClass( 'mangaperformer-pageoverview-navbutton mangaperformer-pageoverview-prevpage' )
+	// 	.appendTo( O.$nav );
 
 	/**
 	 * @property {jQuery} $nextPage
 	 * The button node that navigates to the next page of the page overview.
 	 * @readonly
 	 */
-	O.$nextPage = UI.button( { size: 30, label: __.f( "button.overview.page.next" ), icon: 'nav-down' } )
-		.addClass( 'mangaperformer-pageoverview-navbutton mangaperformer-pageoverview-nextpage' )
-		.appendTo( O.$nav );
+	// O.$nextPage = UI.button( { size: 30, label: __.f( "button.overview.page.next" ), icon: 'nav-down' } )
+	// 	.addClass( 'mangaperformer-pageoverview-navbutton mangaperformer-pageoverview-nextpage' )
+	// 	.appendTo( O.$nav );
 
 	O.$nav.appendTo( O.$header );
 

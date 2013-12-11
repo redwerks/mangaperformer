@@ -5,7 +5,7 @@
  * @extends Events
  * @private
  */
-UI.Slider = function() {
+UI.Slider = UI.Component.create( 'slider', function( o ) {
 	var S = this;
 
 	S.rtl = false;
@@ -133,9 +133,13 @@ UI.Slider = function() {
 
 	// Initial state
 	S.setLoaded( 1 );
-};
+} );
 
 Events.mixin( UI.Slider.prototype );
+
+UI.Slider.prototype.getDOM = function() {
+	return this.$slider;
+};
 
 /**
  * Proxy for jQuery's appendTo on the main element.

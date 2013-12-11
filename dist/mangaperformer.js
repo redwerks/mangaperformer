@@ -1132,59 +1132,743 @@
 	var UI = {};
 
 	/**
+	 * Helper object that abstracts use of the browser's fullscreen APIs.
+	 * @singleton
+	 * @private
+	 */
+	UI.Fullscreen = {
+		/**
+		 * @property {string}
+		 * A space separated string listing the various standard and vendor prefixed names that the
+		 * 'fullscreenchange' event goes by. This is used when we register and unregister fullscreen
+		 * events to ensure we don't miss support for any browser.
+		 * @readonly
+		 */
+		events: 'fullscreenchange mozfullscreenchange webkitfullscreenchange',
+
+		/**
+		 * Register an event handler that'll be called when fullscreen is entered or exited.
+		 * @param {Function} handler The callback that will be run.
+		 */
+		on: function( handler ) {
+			$( document ).on( UI.Fullscreen.events, handler );
+		},
+
+		/**
+		 * De-register an event handler registered with .on().
+		 * @param {Function} handler The callback function that was registered.
+		 */
+		off: function( handler ) {
+			$( document ).off( UI.Fullscreen.events, handler );
+		},
+
+		/**
+		 * Check to see if this browser supports the fullscreen API.
+		 * @return {boolean}
+		 */
+		supported: function() {
+			return 'fullscreenElement' in document
+				|| 'mozFullScreenElement' in document
+				|| 'webkitFullscreenElement' in document;
+		},
+
+		/**
+		 * Check to see if the document is currently fullscreen.
+		 * @return {boolean}
+		 */
+		check: function() {
+			// @todo Test the performer in a context with another thing using the fullscreen API.
+			//       See if we need to verify that the fullscreen element is our performer root to avoid bugs.
+			return document.fullscreenElement
+				|| document.mozFullScreenElement
+				|| document.webkitFullscreenElement
+				|| false;
+		},
+
+		/**
+		 * Try to enable fullscreen on the element.
+		 * @param {HTMLElement} elem The element to fullscreen.
+		 */
+		request: function( elem ) {
+			if ( elem.requestFullscreen ) {
+				elem.requestFullscreen();
+			} else if ( elem.mozRequestFullScreen ) {
+				elem.mozRequestFullScreen();
+			} else if ( elem.webkitRequestFullscreen ) {
+				elem.webkitRequestFullscreen( Element.ALLOW_KEYBOARD_INPUT );
+			}
+		},
+
+		/**
+		 * Exit fullscreen if in fullscreen mode.
+		 */
+		cancel: function() {
+			if ( document.cancelFullScreen ) {
+				document.cancelFullScreen();
+			} else if ( document.mozCancelFullScreen ) {
+				document.mozCancelFullScreen();
+			} else if ( document.webkitCancelFullScreen ) {
+				document.webkitCancelFullScreen();
+			}
+		}
+	};
+
+	/**
+	 * Base constructor for all UI components.
+	 * @param {UI.Interface} interfaceObj The interface the component belongs to.
+	 * @param {Object} o Options for the component.
+	 * @param {string} o.name The component's name.
+	 * @param {string[]} [o.refreshOn=[]] An array of refreshFor event names
+	 *                                 the component should refresh on.
+	 * @param {string[]} [o.uses] An array of keys within the interface's state
+	 *                            which this component makes use of.
+	 */
+	UI.Component = function( interfaceObj, o ) {
+		/**
+		 * @property {UI.Interface} interface
+		 * The interface this component instance belongs to.
+		 * @readonly
+		 */
+		this.interface = interfaceObj;
+
+		/**
+		 * @property {string} name
+		 * The name of the component.
+		 * @readonly
+		 */
+		this.name = o.name;
+
+		/**
+		 * @property {string[]} refreshOn
+		 * The refreshFor event names this component should refresh on.
+		 * @readonly
+		 */
+		this.refreshOn = (o.refresh || "").split( /\s+/ );
+
+		/**
+		 * @property {string[]} uses
+		 * The interface state keys this component makes use of.
+		 * The interface will make sure this component is refreshed
+		 * whenever one of the state keys it uses is modified.
+		 * @readonly
+		 */
+		this.uses = o.uses || [];
+
+		/**
+		 * @property {Object} agent
+		 * The agent for the component.
+		 * 
+		 * An agent is a plain object that inherits from the object set as the
+		 * agent property on this component and as a single property set on it
+		 * named component with this component instance as it's value.
+		 * The agent is usually returned when a component is first created as
+		 * a method of setting up anything which cannot be setup as arguments.
+		 * @readonly
+		 */
+		this.agent = create( this.constructor.agent || {} );
+		this.agent.component = this;
+
+		/**
+		 * @property {boolean} visible
+		 * The visibility of the component.
+		 * @readonly
+		 */
+		this.visible = true;
+	};
+
+	UI.Component.implementations = {};
+
+	/**
+	 * Helper function that implements a new UI.Component subclass.
+	 * @param {string} name The name of the component.
+	 * @param {Function|Object} implementation A function to run as the constructor or an object containing the constructor
+	 *        function as a property named 'constructor' and other properties with methods to implement on
+	 *        the prototype of the new component.
+	 * @return {Function} A constructor function with a prototype that inherits from UI.Component's prototype.
+	 */
+	UI.Component.create = function( name, implementation ) {
+		var constructor;
+		if ( !_.isString( name ) ) {
+			throw new TypeError( "name must be a string" );
+		}
+		if ( _.isFunction( implementation ) ) {
+			constructor = implementation;
+			implementation = {};
+		} else if ( _.isObject( implementation ) ) {
+			constructor = implementation.constructor;
+			delete implementation.constructor;
+			if ( !_.isFunction( constructor ) ) {
+				throw new TypeError( "There is no constructor for the " + name + " component." );
+			}
+		} else {
+			throw new TypeError( "implementation for " + name + " must be a function or object containing .constructor" );
+		}
+
+		var Component = function( interfaceObj, o ) {
+			UI.Component.call( this, interfaceObj, o );
+			constructor.call( this, o );
+		};
+		Component.prototype = create( UI.Component.prototype );
+		Component.prototype.constructor = Component;
+
+		var staticProperties = [ 'setupEvents', 'agent' ];
+		_.each( implementation, function( value, name ) {
+			if ( _.contains( staticProperties, name ) ) {
+				// Add static methods and properties from implementation to the constructor.
+				Component[name] = value;
+			} else {
+				// Add instance methods from implementation to the prototype.
+				Component.prototype[name] = value;
+			}
+		} );
+
+		UI.Component.implementations[name] = Component;
+		Component.prototype.componentName = name;
+		return Component;
+	};
+
+	/**
+	 * Call the setupEvents method for all component types to setup the delegated events that each UI.Component
+	 * type needs on an ancestor in order for the component type node to function.
+	 * @param {jQuery} $node The root node to setup delegated events on.
+	 */
+	UI.Component.setupAllEvents = function( $node ) {
+		_.each( UI.Component.implementations, function( Component, name ) {
+			if ( _.isFunction( Component.setupEvents ) ) {
+				Component.setupEvents( $node );
+			}
+		} );
+	};
+
+	/**
+	 * Create the DOM node for the component root.
+	 * @param {string} html The html for the node.
+	 */
+	UI.Component.prototype.createRoot = function( html ) {
+		if ( this.$component ) {
+			throw new Error( "component root already exists" );
+		}
+
+		this.$component = $( $.parseHTML( html ) )
+			.attr( 'data-ui-component', this.componentName )
+			.data( 'mangaperformer-component', this );
+
+		return this.$component;
+	};
+
+	/**
+	 * Return a jQuery instance for a DOM node that is part of the component.
+	 * With a selector it will use find to return a descendant of the component's root node.
+	 * Without a selector it will return the component's root node itself.
+	 *
+	 * If the component's root node does not exist yet it will implicitly be created as a div.
+	 * This makes the function useful for the initialization of the component node.
+	 *
+	 * @param {string} [selector] A selector targeting a descendant of the component's root node.
+	 */
+	UI.Component.prototype.$ = function( selector ) {
+		if ( !this.$component ) {
+			this.createRoot( '<div></div>' );
+		}
+
+		return selector
+			? this.$component.find( selector )
+			: this.$component;
+	};
+
+	/**
+	 * Method to return the component's DOM.
+	 * @return {jQuery} The DOM node as a jQuery object.
+	 */
+	UI.Component.prototype.getDOM = function() {
+		return this.$component;
+	};
+
+	/**
+	 * Trigger a special component event. This event will first bubble internally through
+	 * UI.Component instances by walking up the DOM and calling any relevant intercept
+	 * handler on a parent component. Following that it will trigger a native DOM event
+	 * where the type is prefixed with "mangaperformer-". At any point a handler may stop
+	 * the propagation of the event.
+	 *
+	 * @param {string} type The name of the event's type. Should be short such as 'activate',
+	 *                      *not* prefixed with "mangaperformer-".
+	 * @param {Object} [eventData] Provide and extra set of data that should be passed along
+	 *                             inside the event object.
+	 */
+	UI.Component.prototype.trigger = function( type, eventData ) {
+		eventData = $.extend( { component: this }, eventData || {} );
+		var event = $.Event( 'mangaperformer-' + type, eventData ),
+			node = this.$().parent().closest( '[data-ui-component]' ),
+			component;
+
+		while ( node && node.length ) {
+			if ( event.isPropagationStopped() ) {
+				// Break out of the intercepts if propagation was halted.
+				break;
+			}
+
+			component = node.data( 'mangaperformer-component' );
+			if ( component && component.intercept && component.intercept[type] ) {
+				component.intercept[type].call( component, event );
+			}
+
+			node = node.parent().closest( '[data-ui-component]' );
+		}
+
+		// Trigger the DOM event. jQuery will already take care of checking if stopPropagation was called.
+		this.$().trigger( event );
+
+		// Return the event just in case the caller wishes to implement some sort of 'native' behavior.
+		return event;
+	};
+
+	/**
+	 * Show a hidden component.
+	 */
+	UI.Component.prototype.show = function() {
+		if ( this.visible ) { return; }
+		this.visible = true;
+		// This may be triggered before the button is actually inserted into the DOM
+		// so defer it.
+		_.defer( _.bind( function() {
+			this.$()
+				.attr( 'aria-hidden', 'false' )
+				.css( 'visibility', '' )
+				.css( 'display', '' );
+
+			this.trigger( 'show' );
+		}, this ) );
+	};
+
+	/**
+	 * Hide a visible component.
+	 */
+	UI.Component.prototype.hide = function() {
+		if ( !this.visible ) { return; }
+		this.visible = false;
+		// This may be triggered before the button is actually inserted into the DOM
+		// so defer it.
+		_.defer( _.bind( function() {
+			this.$()
+				.attr( 'aria-hidden', 'true' )
+				.css( 'visibility', 'collapse' )
+				.css( 'display', 'none' );
+
+			this.trigger( 'hide' );
+		}, this ) );
+	};
+
+	/**
+	 * Set the visibility of a component, showing or hiding it.
+	 * @param {boolean} visibility Should the component be visible?
+	 */
+	UI.Component.prototype.setVisibility = function( visibility ) {
+		this[visibility ? 'show' : 'hide']();
+	};
+
+	/**
+	 * Refresh the component, if supported.
+	 */
+	UI.Component.prototype.refresh = function() {};
+
+	/**
+	 * An interface component that simply groups a series of buttons together.
+	 * This component is primarily visual/layout in structure so interfaces should
+	 * not use it directly. It's intended to be used by the layout when constructing
+	 * the layout.
+	 * @private
+	 */
+	UI.ButtonGroup = UI.Component.create( 'buttongroup', {
+		constructor: function() {
+			this.buttons = [];
+
+			this.$()
+				.addClass( 'mangaperformer-buttongroup' );
+		},
+
+		/**
+		 * Add a new button to the button group.
+		 * @param {UI.Button} button The button to add.
+		 * @private
+		 */
+		_add: function( button ) {
+			this.buttons.push( button );
+			this.$().append( button.getDOM() );
+		},
+
+		intercept: {
+			hide: function( e ) {
+				// Capture the button's hide event, parent elements only need to hear a hide event
+				// if this entire element is hidden.
+				e.stopPropagation();
+
+				// Calculate visibility based on whether any of the buttons are visible
+				var visible = _( this.buttons ).chain().pick( 'visible' ).any().value();
+				this.setVisibility( visible );
+			},
+
+			show: function( e ) {
+				// Capture the button's show event, parent elements only need to hear a show event
+				// if this component emits it (ie: if calling show here does in fact unhide the component).
+				e.stopPropagation();
+
+				// If any of the buttons inside this component have been unhidden make sure this component
+				// is not hidden.
+				this.show();
+			}
+		},
+
+		/**
+		 * @property {Object} agent
+		 * The base object for the component's agent.
+		 * @return {Object}
+		 */
+		agent: {
+			/**
+			 * Create a button in the button group.
+			 * @param {string} name The button's names.
+			 * @param {Object} o Options for the button.
+			 * @chainable
+			 */
+			create: function( name, o ) {
+				var button = this.component.interface.button( name, o );
+				return this.add( button );
+			},
+
+			/**
+			 * Add a button to the button group.
+			 * @param {UI.Button} button The button.
+			 * @chainable
+			 */
+			add: function( button ) {
+				this.component._add( button );
+				return this;
+			}
+		}
+	} );
+
+	/**
+	 * An interface component that groups a series of buttons intended to represent
+	 * multiple possible values of one state.
+	 * @param {Object} o Options
+	 * @param {string} [o.state=name] The name of the state the buttons switch through.
+	 * @private
+	 */
+	UI.StateSet = UI.Component.create( 'stateset', {
+		constructor: function( o ) {
+			this.stateButtons = [];
+			this.states = {};
+			this.stateName = o.state || this.name;
+
+			// Make the DOM
+			this.$()
+				.attr( 'data-state', this.stateName );
+		},
+
+		/**
+		 * Add a new button to the state set.
+		 * @param {UI.Button} button The button to add.
+		 * @private
+		 */
+		_add: function( button ) {
+			this.stateButtons.push( button );
+			// this.states[...] = button; @todo Store a state value -> button map
+			this.$().append( button.getDOM() );
+		},
+
+		intercept: {
+			activate: function( e ) {
+				if ( !( e.source === 'button' && e.component instanceof UI.Button ) ) { return; }
+
+				// e.button.
+				this.trigger( 'changestate', {
+					state: {
+						name: this.stateName,
+						value: e.component.extra.state
+					}
+				} );
+
+				e.stopPropagation();
+			},
+
+			hide: function( e ) {
+				// Capture the button's hide event, parent elements only need to hear a hide event
+				// if this entire element is hidden.
+				e.stopPropagation();
+
+				// Calculate visibility based on whether any of the buttons are visible
+				var visible = _( this.stateButtons ).chain().pick( 'visible' ).any().value();
+				this.setVisibility( visible );
+			},
+
+			show: function( e ) {
+				// Capture the button's show event, parent elements only need to hear a show event
+				// if this component emits it (ie: if calling show here does in fact unhide the component).
+				e.stopPropagation();
+
+				// If any of the buttons inside this component have been unhidden make sure this component
+				// is not hidden.
+				this.show();
+			}
+		},
+
+		/**
+		 * @property {Object} agent
+		 * The base object for the component's agent.
+		 * @return {Object}
+		 */
+		agent: {
+			/**
+			 * Create a button covering one state of the state set.
+			 * @param {string} name The button's names.
+			 * @param {Object} o Options for the button.
+			 * @param {Object} o.state The value for the state this button covers.
+			 * @chainable
+			 */
+			state: function( name, o ) {
+				var button = this.component.interface.button( name, o );
+				this.component._add( button );
+				return this;
+			}
+		}
+	} );
+
+	/**
+	 * An interface component that groups a pair of prev/next buttons together.
+	 * @param {Object} o Options
+	 * @private
+	 */
+	UI.NavButtons = UI.Component.create( 'navbuttons', {
+		constructor: function( o ) {
+			this.prev = undefined;
+			this.next = undefined;
+
+			this.$();
+		},
+
+		/**
+		 * Register the prev or next button for the nav buttons component.
+		 * @param {"prev"|"next"} direction The direction of the button being registered.
+		 * @param {UI.Button} button The button to add.
+		 * @private
+		 */
+		_register: function( direction, button ) {
+			if ( direction !== 'prev' && direction !== 'next' ) {
+				throw new Error( "Direction must be one of 'prev' or 'next'." );
+			}
+
+			this[direction] = button;
+
+			this.$('> *').detach();
+			this.$().append( _( [ this.prev, this.next ] ).compact().invoke( 'getDOM' ).value() );
+		},
+
+		intercept: {
+			activate: function( e ) {
+				if ( !( e.source === 'button' && e.component instanceof UI.Button ) ) { return; }
+
+				// e.button.
+				this.trigger( 'navigate', {
+					navName: this.name,
+					direction: e.component.extra.direction
+				} );
+
+				e.stopPropagation();
+			},
+
+			hide: function( e ) {
+				// Capture the button's hide event, parent elements only need to hear a hide event
+				// if this entire element is hidden.
+				e.stopPropagation();
+
+				// Calculate visibility based on whether either of the buttons are visible
+				var visible = ( this.prev && this.prev.visible ) || ( this.next && this.next.visible );
+				this.setVisibility( visible );
+			},
+
+			show: function( e ) {
+				// Capture the button's show event, parent elements only need to hear a show event
+				// if this component emits it (ie: if calling show here does in fact unhide the component).
+				e.stopPropagation();
+
+				// If any of the buttons inside this component have been unhidden make sure this component
+				// is not hidden.
+				this.show();
+			}
+		},
+
+		agent: new function() {
+			// The function used to register both prev and next is almost entirely the same
+			// so use a function factory to make the registration functions.
+			var navRegisterFunction = function( direction ) {
+				return function( name, o ) {
+					o = $.extend( { direction: direction }, o || {} );
+					var button = this.component.interface.button( name, o );
+					this.component._register( direction, button );
+					return this;
+				};
+			};
+
+			// Setup a helper that'll allow the .next and .prev to be registered by the caller
+			/**
+			 * Register the prev button for the nav buttons component.
+			 * @param {string} name The name of the button being created.
+			 * @param {Object} o Options to be passed to the UI.Button instance being created.
+			 */
+			this.prev = navRegisterFunction( 'prev' );
+
+			/**
+			 * Register the name button for the nav buttons component.
+			 * @param {string} name The name of the button being created.
+			 * @param {Object} o Options to be passed to the UI.Button instance being created.
+			 */
+			this.next = navRegisterFunction( 'next' );
+		}
+	} );
+
+	/**
+	 * An interface component that displays a title.
+	 * @param {Object} [o] The options.
+	 * @param {string} [o.class] A CSS class for the node.
+	 * @private
+	 */
+	UI.Title = UI.Component.create( 'title', {
+		constructor: function( o ) {
+			this.$()
+				.addClass( o['class'] );
+
+			this.refresh();
+		},
+
+		refresh: function() {
+			var title = this.interface.state.get( 'title' );
+
+			this.$().text( title || "" );
+			this.setVisibility( !!title );
+		}
+	} );
+
+	/**
 	 * Create a button with an icon.
 	 * @param {Object} o The options for the button.
-	 * @param {number} [o.size=32] The pixel size of the button.
+	 * @param {string} [o.name] The button name.
+	 * @param {number} [o.size=34] The pixel size of the button.
 	 * @param {string} [o.label] The label for the button.
 	 * @param {string} [o.icon] The name of the icon for the button.
 	 * @return {jQuery}
 	 */
-	UI.button = function( o ) {
-		o = $.extend( {
-			size: 32
-		}, o );
-		var $button = $( '<button type="button" class="mangaperformer-button"></button>' );
+	UI.Button = UI.Component.create( 'button', {
+		constructor: function( o ) {
+			o = $.extend( {
+				size: 34
+			}, o );
 
-		var $img = $( '<img />' )
-			.attr( 'width', o.size )
-			.attr( 'height', o.size )
-			.appendTo( $button );
-
-		// Pass through to updateButton in case the options contain a label or icon
-		UI.updateButton( $button, o );
-
-		return $button;
-	};
-
-	/**
-	 * Update the icon and label for a button.
-	 * @param {Object} o The options for the button.
-	 * @param {string|function} [o.label] The label for the button.
-	 * @param {string} [o.icon] The name of the icon for the button.
-	 * @return {jQuery}
-	 */
-	UI.updateButton = function( $button, o ) {
-		if ( !o.label ) {
-			o.label = $button.data( 'button-label-fn' );
-		}
-
-		if ( o.label ) {
-			if ( $.isFunction( o.label ) ) {
-				$button.data( 'button-label-fn', o.label );
-				o.label = o.label.call( undefined );
+			this.createRoot( '<button type="button" class="mangaperformer-button"></button>' );
+			if ( o.name ) {
+				this.$()
+					.attr( 'data-ui-button-name', o.name )
+					.addClass( 'mangaperformer-button-' + o.name );
 			}
-			$button.find( 'img' ).attr( 'alt', o.label );
-			$button.attr( 'aria-label', o.label );
-		}
 
-		if ( o.icon ) {
+			$( '<img />' )
+				.attr( 'width', o.size )
+				.attr( 'height', o.size )
+				.appendTo( this.$() );
+
+			this.name = o.name;
+			this.extra = _.omit( o, [ 'name', 'size', 'label', 'icon', 'refreshOn', 'uses' ] );
+			this.label = _.isFunction( o.label )
+				? o.label
+				: function() { return o.label || ""; };
+			this.icon = _.isFunction( o.icon )
+				? o.icon
+				: function() { return o.icon || ""; };
+			this.support = _.isFunction( o.support )
+				? o.support
+				: function() { return true; };
+
+			this.refresh();
+		},
+
+		/**
+		 * Refresh the icon and label for a button.
+		 */
+		refresh: function() {
+			// We use pick to only pass state keys the button explicitly states
+			// that it makes use of to ensure that the uses key – which is used
+			// to properly deal out refreshes of buttons when a state key is
+			// changed – is properly set when the button is registered.
+			var state = this.interface.state.pick( this.uses ),
+				label = this.label( state ),
+				icon = this.icon( state ),
+				support = this.support( state );
+
+			this.$( 'img' ).attr( 'alt', label );
+			this.$().attr( 'aria-label', label );
+
 			// All browsers that support SVG images also support data: URIs
 			var src = Supports.svg
-				? MANGAPERFORMER_ICONS[o.icon]
-				: MangaPerformer.BASE + '/icons/' + o.icon + ".png";
-			$button.find( 'img' ).attr( 'src', src );
+				? MANGAPERFORMER_ICONS[icon]
+				: MangaPerformer.BASE + '/icons/' + icon + ".png";
+			this.$( 'img' ).attr( 'src', src );
+
+			// Hide/show based on support test
+			this.setVisibility( support );
+		},
+
+		/**
+		 * "Activate" a button running whatever action the button is in charge of.
+		 * This is called whenever a click, tap, or keyboard activation is done on the button.
+		 */
+		activate: function() {
+			this.trigger( 'activate', {
+				source: 'button',
+				buttonName: this.name
+			} );
+		},
+
+		/**
+		 * Setup the delegated events needed on some root node which is an ancestor of
+		 * any UI.Button nodes in order for the UI.Button nodes to function.
+		 * @param {jQuery} $node The root node to setup delegated events on.
+		 */
+		setupEvents: function( $node ) {
+			function activate( $button ) {
+				var button = $button.data( 'mangaperformer-component' );
+				if ( button ) {
+					button.activate();
+				}
+			}
+
+			$node
+				// Special fallback for non-mouse non-clicks that trigger click.
+				// Such as activating a focused button with a keyboard.
+				.on( 'click', '[data-ui-component="button"]', function( e ) {
+					var $button = $( this );
+					if ( $button.data( 'noclick' ) ) {
+						$button.data( 'noclick', false );
+						return;
+					}
+
+					activate( $button );
+				} )
+				.hammer()
+					// Tap gesture, handles mice, touches, pointers, etc...
+					.on( 'tap', function( ev ) {
+						var $button = $( ev.target ).closest( '[data-ui-component="button"]', this );
+						if ( !$button.length ) { return; }
+
+						// Kill a click happening after the tap
+						$button.data( 'noclick', true );
+
+						activate( $button );
+
+						// When the button is focused as a result of pointer/touch interactions blur it when finished.
+						$button[0].blur();
+					} );
 		}
-	};
+	} );
 
 	UI.buttonTooltipSetup = function( $root ) {
 		var tip = {
@@ -1258,7 +1942,9 @@
 				}
 
 				if ( e.type === 'mouseover' ) {
-					tip.show( button, { delay: tip.delay } );
+					if ( button ) {
+						tip.show( button, { delay: tip.delay } );
+					}
 				} else {
 					tip.hide( { source: 'mouse' } );
 				}
@@ -1303,7 +1989,7 @@
 	 * @extends Events
 	 * @private
 	 */
-	UI.Slider = function() {
+	UI.Slider = UI.Component.create( 'slider', function( o ) {
 		var S = this;
 
 		S.rtl = false;
@@ -1431,9 +2117,13 @@
 
 		// Initial state
 		S.setLoaded( 1 );
-	};
+	} );
 
 	Events.mixin( UI.Slider.prototype );
+
+	UI.Slider.prototype.getDOM = function() {
+		return this.$slider;
+	};
 
 	/**
 	 * Proxy for jQuery's appendTo on the main element.
@@ -1584,7 +2274,10 @@
 			.css( 'transform', 'translate3d(0,0,0)' )
 			.appendTo( S.$bar );
 	};
+
+	// @fixme Now that UI.Slider is a UI.Component we should find a better way to do subcomponents.
 	UI.PaneSlider.prototype = create( UI.Slider.prototype );
+	UI.PaneSlider.prototype.constructor = UI.PaneSlider;
 
 	/**
 	 * Set the pane preview on display above the slider.
@@ -1646,6 +2339,433 @@
 	};
 
 	/**
+	 * Abstract class base for classes in charge of taking an interface and laying out the buttons,
+	 * sliders, viewports, and other UI components.
+	 * @abstract
+	 * @private
+	 */
+	UI.Layout = function() {
+		this.interface = undefined;
+	};
+
+	/**
+	 * Setup various delegated DOM events on a node to handle UI components nested inside of that element.
+	 * @param {jQuery} $node The node to setup the events on.
+	 */
+	UI.Layout.prototype.setupEvents = function( $node ) {
+		var L = this,
+			I = this.interface;
+
+		// Setup events needed to support tooltips under this node.
+		UI.buttonTooltipSetup( $node );
+
+		// Setup events needed to support the various UI components under this node
+		UI.Component.setupAllEvents( $node );
+
+		$node
+			.on( 'mangaperformer-activate', function( e ) {
+				var name = e.component.name;
+				if ( I.on && I.on.activate && I.on.activate[name] ) {
+					I.on.activate[name].call( I );
+				}
+			} )
+			.on( 'mangaperformer-changestate', function( e ) {
+				var name = e.state.name;
+				if ( I.on && I.on.state && I.on.state[name] ) {
+					I.on.state[name].call( I, e.state.value );
+				}
+			} )
+			.on( 'mangaperformer-navigate', function( e ) {
+				var name = e.navName;
+				if ( I.on && I.on.nav && I.on.nav[name] ) {
+					I.on.nav[name].call( I, e.direction );
+				}
+			} );
+	};
+
+	/**
+	 * Build the interface DOM and attach it to a DOM node.
+	 * @param {jQuery} $root The root DOM node (as a jQuery object) to apply the interface to.
+	 * @abstract
+	 */
+	UI.Layout.prototype.applyTo = function( $root ) {};
+
+	/**
+	 * Abstract base class for classes that define a layout for the reader interface implemented by UI.ReaderInterface.
+	 * @extends UI.Layout
+	 * @abstract
+	 * @private
+	 */
+	UI.ReaderLayout = function() {
+		UI.Layout.apply( this, arguments );
+	};
+
+	UI.ReaderLayout.prototype = create( UI.Layout.prototype );
+
+	/**
+	 * Layout for the reader interface that presents the interface in a floating UI box.
+	 * @extends UI.ReaderLayout
+	 * @private
+	 */
+	UI.FloatingReaderLayout = function() {
+		UI.ReaderLayout.apply( this, arguments );
+		var L = this;
+	};
+
+	UI.FloatingReaderLayout.prototype = create( UI.ReaderLayout.prototype );
+
+	/**
+	 * @
+	 */
+	UI.FloatingReaderLayout.prototype.applyTo = function( $root ) {
+		var L = this,
+			I = L.interface,
+			R = {};
+
+		I.getDOM( 'viewport' ).appendTo( $root );
+
+		/**
+		 * The UI node containing the buttons, slider, and other interface elements.
+		 */
+		R.$ui = $( '<div class="mangaperformer-ui"></div>' );
+
+		/**
+		 * The node containing the hierarchy of button elements.
+		 */
+		R.$buttons = $( '<div class="mangaperformer-buttons"></div>' );
+
+		(function() {
+			function region( name, cb ) {
+				var $region = $( '<div class="mangaperformer-buttonregion"></div>' )
+					.addClass( 'mangaperformer-buttonregion-' + name );
+
+				cb( $region );
+
+				$region.appendTo( R.$buttons );
+			}
+
+			region( 'left', function( $region ) {
+				_.each( [ 'pagespread', 'view-mode' ], function( name ) {
+					I.getDOM( name )
+						.addClass( 'mangaperformer-buttongroup' )
+						.appendTo( $region );
+				} );
+			} );
+
+			region( 'nav', function( $region ) {
+				I.getDOM( 'nav' )
+					.addClass( 'mangaperformer-buttongroup' )
+					.appendTo( $region )
+					// Update sizes
+					.find( '[data-ui-component="button"] img' )
+						.attr( 'width', 40 )
+						.attr( 'height', 40 );
+			} );
+
+			region( 'right', function( $region ) {
+				_.each( [ 'overview', 'fullscreen' ], function( name ) {
+					I.buttonGroup( false )
+						.add( I.get( name ) )
+						.component
+							.getDOM().appendTo( $region );
+				} );
+			} );
+		})();
+		this.setupEvents( R.$ui );
+		R.$buttons.appendTo( R.$ui );
+
+		I.getDOM( 'slider' ).appendTo( R.$ui );
+
+		I.getDOM( 'title' ).appendTo( R.$ui );
+
+		R.$ui.appendTo( $root );
+	};
+
+	/**
+	 * Layout for the reader interface that presents the interface sandwich shape with the UI elements in
+	 * both a header and footer above and below the viewport.
+	 * @extends UI.ReaderLayout
+	 * @private
+	 */
+	UI.SandwichReaderLayout = function() {
+		UI.ReaderLayout.apply( this, arguments );
+	};
+
+	UI.SandwichReaderLayout.prototype = create( UI.ReaderLayout.prototype );
+
+	/**
+	 * A state object used by the interface.
+	 * @param {UI.Interface} interfaceObj The interface instance this belongs to.
+	 * @param {Object} [state] Initial state data.
+	 */
+	function StateObject( interfaceObj, state ) {
+		this.interface = interfaceObj;
+		this.state = state;
+	}
+
+	/**
+	 * Return the value associated with a key in the state.
+	 * @param {string} key The state key.
+	 * @return {Mixed} The data.
+	 */
+	StateObject.prototype.get = function( key ) {
+		return this.state[key];
+	};
+
+	/**
+	 * Update the value associated with a key in the state.
+	 * This method must be used instead of directly modifying
+	 * the state as this method is responsible for refreshing
+	 * the UI components that watch for changes in the state.
+	 * @param {string} key The state key.
+	 * @param {Mixed} value The data.
+	 */
+	StateObject.prototype.set = function( key, value ) {
+		this.state[key] = value;
+
+		// Refresh any button that uses this key
+		this.interface.refreshWhere( function( button ) {
+			return _.contains( button.uses, key );
+		} );
+	};
+
+	/**
+	 * Return an object copy of the state, filtered to only have values for the whitelisted keys.
+	 * @param {string[]} keys The state keys that should be returned.
+	 */
+	StateObject.prototype.pick = function( keys ) {
+		return _.pick( this.state, keys );
+	};
+
+	/**
+	 * ...
+	 * @param {Object} o The options
+	 * @param {UI.Layout} o.layout The layout interface in charge of laying out the interface.
+	 * @param {Object} [o.state={}] Initial data for the state tracking object used by the interface.
+	 * @param {Object} [o.on] A structure of objects defining high-level handlers for events/actions
+	 *                        taken by components within the interface.
+	 * @param {Object} [o.on.activate] Activate event handlers mapping name to handler.
+	 * @param {Object} [o.on.state] State change event handlers mapping name to handler.
+	 * @param {Object} [o.on.nav] Navigation event handlers mapping name to handler.
+	 * @private
+	 */
+	UI.Interface = function( o ) {
+		this.layout = o.layout;
+		this.components = {};
+		this.state = new StateObject( this, o.state || {} );
+		this.on = o.on || {};
+	};
+
+	/**
+	 * Return a registered interface component.
+	 * @param {string} name The name of the component to return.
+	 */
+	UI.Interface.prototype.get = function( name ) {
+		if ( !_.has( this.components, name ) ) {
+			throw new Error( "There is no component by the name " + name );
+		}
+		return this.components[name];
+	};
+
+	/**
+	 * Return the DOM node for a registered interface component.
+	 * This is basically a shortcut for `.get( name ).getDOM();`
+	 * @param {string} name The name of the component.
+	 * @return {jQuery} The DOM node wrapped in jQuery.
+	 */
+	UI.Interface.prototype.getDOM = function( name ) {
+		return this.get( name ).getDOM();
+	};
+
+	/**
+	 * Register a component with the interface.
+	 * @param {string} name The name of the component.
+	 * @param {Object} obj The component instance.
+	 */
+	UI.Interface.prototype.registerComponent = function( name, obj ) {
+		if ( _.has( this.components, name ) ) {
+			throw new Error( "There is already a component named " + name );
+		}
+		if ( !(obj instanceof UI.Component ) && !( obj instanceof Viewport ) ) { // @fixme Adding Viewport here is a temporary hack.
+			throw new TypeError( "Tried to register something other than an UI.Component instance as the component named " + name );
+		}
+
+		this.components[name] = obj;
+	};
+
+	/**
+	 * Create and then register a component with the interface.
+	 * @param {string|false} name The name of the component. This may be false if a layout is
+	 *                            creating a component that is not supposed to be registered.
+	 * @param {function} Component A constructor for the UI.Component type to create.
+	 * @param {Object} o The options to use while constructing the component.
+	 * @return {Object} The component's agent.
+	 */
+	UI.Interface.prototype.createComponent = function( name, Component, o ) {
+		o = $.extend( { name: name }, o || {} );
+		var component = new Component( this, o );
+		if ( name ) {
+			this.registerComponent( name, component );
+		}
+		return component.agent;
+	};
+
+	UI.Interface.prototype.buttonGroup = function( name, o ) {
+		return this.createComponent( name, UI.ButtonGroup, o );
+	};
+
+	UI.Interface.prototype.stateSet = function( name, o ) {
+		return this.createComponent( name, UI.StateSet, o );
+	};
+
+	UI.Interface.prototype.navButtons = function( name, o ) {
+		return this.createComponent( name, UI.NavButtons, o );
+	};
+
+	UI.Interface.prototype.button = function( name, o ) {
+		return this.createComponent( name, UI.Button, o ).component;
+	};
+
+	/**
+	 * Low level method for refreshing components within the interface.
+	 * Accepts a callback which will be called with each component
+	 * and expects a boolean indicating whether the component should
+	 * be refreshed or not.
+	 * @param {Function} filter The callback filter function.
+	 * @param {UI.component} filter.component The component to filter.
+	 */
+	UI.Interface.prototype.refreshWhere = function( filter ) {
+		var I = this;
+		_.each( I.components, function( component ) {
+			if ( !( component instanceof UI.Component ) ) { return; }
+			if ( filter.call( I, component ) ) {
+				component.refresh();
+			}
+		} );
+	};
+
+	/**
+	 * Refresh every component within the interface. Used when a large
+	 * scale change is made. Such as the i18n language changing.
+	 */
+	UI.Interface.prototype.refreshAll = function() {
+		this.refreshWhere( function() { return true; } );
+	};
+
+	/**
+	 * Refresh components that are setup to listen for a specific
+	 * refresh event name.
+	 * @param {string} eventName The event name.
+	 */
+	UI.Interface.prototype.refreshFor = function( eventName ) {
+		this.refreshWhere( function( component ) {
+			return _.contains( component.refreshOn, eventName );
+		} );
+	};
+
+	/**
+	 * Build the interface DOM and attach it to a DOM node.
+	 * @param {jQuery} $root The root DOM node (as a jQuery object) to apply the interface to.
+	 */
+	UI.Interface.prototype.applyTo = function( $root ) {
+		this.layout.interface = this;
+		this.layout.applyTo( $root );
+	};
+
+	/**
+	 * @extends UI.Interface
+	 */
+	UI.ReaderInterface = function( o ) {
+		UI.Interface.call( this, o );
+		var U = this;
+
+		U.stateSet( 'pagespread' )
+			.state( 'pagespread-1', {
+				state: 1,
+				icon: "1-page-spread",
+				label: __.f( "button.spread.1" )
+			} )
+			.state( 'pagespread-2', {
+				state: 2,
+				icon: "2-page-spread",
+				label: __.f( "button.spread.2" )
+			} );
+
+		U.stateSet( 'view-mode' )
+			.state( 'view-pagefit', {
+				state: Performer.ViewMode.PAGEFIT,
+				icon: "fullpage-view",
+				label: __.f( "button.view.page" )
+			} )
+			.state( 'view-pagewidth', {
+				state: Performer.ViewMode.PAGEWIDTH,
+				icon: "pagewidth-view",
+				label: __.f( "button.view.width" )
+			} )
+			.state( 'view-panel', {
+				state: Performer.ViewMode.PANEL,
+				icon: "panel-view",
+				label: __.f( "button.view.panel" )
+			} );
+
+		U.navButtons( 'nav' )
+			.prev( 'prev', {
+				uses: [ 'manga', 'viewMode' ],
+				icon: function( s ) {
+					return s.manga && s.manga.rtl
+						? "nav-right"
+						: "nav-left";
+				},
+				label: function( s ) {
+					return s.viewMode === Performer.ViewMode.PANEL
+						? __.t( "button.panel.prev" )
+						: __.t( "button.page.prev" );
+				}
+			} )
+			.next( 'next', {
+				uses: [ 'manga', 'viewMode' ],
+				icon: function( s ) {
+					return s.manga && s.manga.rtl
+						? "nav-left"
+						: "nav-right";
+				},
+				label: function( s ) {
+					return s.viewMode === Performer.ViewMode.PANEL
+						? __.t( "button.panel.next" )
+						: __.t( "button.page.next" );
+				}
+			} );
+
+		U.button( 'overview', {
+			icon: "page-overview",
+			label: __.f( "button.overview.open" )
+		} );
+
+		U.button( 'fullscreen', {
+			refresh: 'fullscreenchange',
+			icon: function() {
+				return UI.Fullscreen.check()
+					? "undo-fullscreen"
+					: "do-fullscreen";
+			},
+			label: function() {
+				return UI.Fullscreen.check()
+					? __.t( "button.fullscreen.exit" )
+					: __.t( "button.fullscreen.enter" );
+			},
+			support: function() {
+				return UI.Fullscreen.supported();
+			}
+		} );
+
+		U.createComponent( 'slider', UI.PaneSlider );
+
+		U.createComponent( 'title', UI.Title, { 'class': 'mangaperformer-title' } );
+	};
+
+	UI.ReaderInterface.prototype = create( UI.Interface.prototype );
+
+	/**
 	 * Class handling performer viewports. These viewports handle displaying of the images in
 	 * a manga/comic, zooming, image pans, and transitions moving pages in and out of the viewport.
 	 * @abstract
@@ -1682,6 +2802,14 @@
 		 * The node containing the viewport.
 		 */
 		V.$viewport = $( '<div class="mangaperformer-viewport"></div>' );
+	};
+
+	/**
+	 * Method to return the viewport DOM. Allows the viewport to be treated like a UI component.
+	 * @return {jQuery} The DOM node
+	 */
+	Viewport.prototype.getDOM = function() {
+		return this.$viewport;
 	};
 
 	/**
@@ -1997,18 +3125,18 @@
 		 * The button node that navigates to the previous page of the page overview.
 		 * @readonly
 		 */
-		O.$prevPage = UI.button( { size: 30, label: __.f( "button.overview.page.prev" ), icon: 'nav-up' } )
-			.addClass( 'mangaperformer-pageoverview-navbutton mangaperformer-pageoverview-prevpage' )
-			.appendTo( O.$nav );
+		// O.$prevPage = UI.button( { size: 30, label: __.f( "button.overview.page.prev" ), icon: 'nav-up' } )
+		// 	.addClass( 'mangaperformer-pageoverview-navbutton mangaperformer-pageoverview-prevpage' )
+		// 	.appendTo( O.$nav );
 
 		/**
 		 * @property {jQuery} $nextPage
 		 * The button node that navigates to the next page of the page overview.
 		 * @readonly
 		 */
-		O.$nextPage = UI.button( { size: 30, label: __.f( "button.overview.page.next" ), icon: 'nav-down' } )
-			.addClass( 'mangaperformer-pageoverview-navbutton mangaperformer-pageoverview-nextpage' )
-			.appendTo( O.$nav );
+		// O.$nextPage = UI.button( { size: 30, label: __.f( "button.overview.page.next" ), icon: 'nav-down' } )
+		// 	.addClass( 'mangaperformer-pageoverview-navbutton mangaperformer-pageoverview-nextpage' )
+		// 	.appendTo( O.$nav );
 
 		O.$nav.appendTo( O.$header );
 
@@ -2430,87 +3558,56 @@
 			 * @readonly
 			 */
 			P.viewport = Viewport.getBestViewport();
-			P.viewport.$viewport.appendTo( P.$root );
 
 			/**
-			 * @property {jQuery} $ui
-			 * The UI node containing the buttons, slider, and other interface elements.
+			 * @property {UI.ReaderInterface} ui
+			 * The UI element containing the buttons, slider, and other interface elements.
 			 * @readonly
 			 */
-			P.$ui = $( '<div class="mangaperformer-ui"></div>' );
-
-			/**
-			 * @property {jQuery} $buttons
-			 * The node containing the hierarchy of button elements.
-			 * @readonly
-			 */
-			P.$buttons = $( '<div class="mangaperformer-buttons"></div>' );
-			$.each( [ 'left', 'nav', 'right' ], function( i, key ) {
-				// Each button region
-				var $region = $( '<div class="mangaperformer-buttonregion"></div>' )
-					.addClass( 'mangaperformer-buttonregion-' + key );
-				$.each( P.buttons[key], function( i, group ) {
-					// Button groupings
-					if ( !$.isArray( group ) ) {
-						group = [ group ];
-					}
-					var $group = $( '<div class="mangaperformer-buttongroup"></div>' );
-					$.each( group, function( i, button ) {
-						if ( _.isFunction( button.support ) ) {
-							if ( !button.support() ) {
-								// Skip this button if it's declared no support in this browser
-								return;
+			P.ui = new UI.ReaderInterface( {
+				layout: new UI.FloatingReaderLayout(),
+				on: {
+					state: {
+						pagespread: function( spread ) {
+							P.setPageSpread( spread );
+						},
+						'view-mode': function( viewMode ) {
+							P.setViewMode( viewMode );
+						}
+					},
+					nav: {
+						nav: function( direction ) {
+							if ( direction === 'prev' ) {
+								P.prevPane();
+							} else {
+								P.nextPane();
 							}
 						}
-
-						// Each button
-						var $button = UI.button( { size: key === 'nav' ? 40 : 34 } )
-							.addClass( 'mangaperformer-button-' + button.name )
-							.data( 'button', button );
-
-						if ( button.refresh ) {
-							P.on( button.refresh, function() {
-								P.refreshButton( $button );
-							} );
+					},
+					activate: {
+						overview: function() {
+							// @fixme This could probably be a bit cleaner
+							PageOverview.open( P.manga );
+						},
+						fullscreen: function() {
+							if ( UI.Fullscreen.check() ) {
+								UI.Fullscreen.cancel();
+							} else {
+								UI.Fullscreen.request( P.$root[0] );
+							}
 						}
-
-						P.refreshButton( $button );
-
-						$button.appendTo( $group );
-					} );
-					$group.appendTo( $region );
-				} );
-				$region.appendTo( P.$buttons );
+					}
+				}
 			} );
+			P.ui.registerComponent( 'viewport', P.viewport );
 
-			P.$buttons.appendTo( P.$ui );
-
-			/**
-			 * @property {UI.PaneSlider} slider
-			 * A UI.PaneSlider instance used for the slider and pane preview in the ui.
-			 * @readonly
-			 */
-			P.slider = new UI.PaneSlider();
-			P.slider.appendTo( P.$ui );
-
-			/**
-			 * @property {jQuery} $title
-			 * The node containing the title text for the manga/comic.
-			 * @readonly
-			 */
-			P.$title = $( '<div class="mangaperformer-title"></div>' );
-			P.$title.appendTo( P.$ui );
-
-			P.$ui.appendTo( P.$root );
+			P.ui.applyTo( P.$root );
 
 			P.$root.appendTo( $( 'body' ) );
 
 			// Event handling
 			i18n.on( 'languagechanged', function() {
-				P.$buttons.find( '.mangaperformer-button' )
-					.each( function() {
-						P.refreshButton( $( this ) );
-					} );
+				P.ui.refreshAll();
 			} );
 
 			// @fixme These events should probably only be bound when the performer is enabled
@@ -2521,14 +3618,15 @@
 				}
 			} );
 
-			$( document ).on( 'fullscreenchange mozfullscreenchange webkitfullscreenchange', function() {
+			UI.Fullscreen.on( function() {
 				/**
-				 * @event fullscreenchange
-				 * Fired when the browser's native fullscreenchange event has fired indicating the browser
-				 * has entered or exited fullscreen.
-				 * Duplicated into the Performer's event system for easy refresing of the fullscreen button.
-				 */
+				* @event fullscreenchange
+				* Fired when the browser's native fullscreenchange event has fired indicating the browser
+				* has entered or exited fullscreen.
+				* Duplicated into the Performer's event system for easy refresing of the fullscreen button.
+				*/
 				P.emit( 'fullscreenchange' );
+				P.ui.refreshFor( 'fullscreenchange' );
 			} );
 
 			// @fixme Document or root?
@@ -2553,14 +3651,14 @@
 					}
 				},
 				'f': function() {
-					if ( !P.supportsFullscreen() ) {
+					if ( !UI.Fullscreen.supported() ) {
 						return true;
 					}
 
-					if ( P.isFullscreen() ) {
-						P.cancelFullscreen();
+					if ( UI.Fullscreen.check() ) {
+						UI.Fullscreen.cancel();
 					} else {
-						P.requestFullscreen( P.$root[0] );
+						UI.Fullscreen.request( P.$root[0] );
 					}
 				},
 				'1': function() {
@@ -2584,42 +3682,8 @@
 					.on( 'tap', function( ev ) {
 					} );
 
-			UI.buttonTooltipSetup( P.$buttons );
 
-			P.$buttons
-				.on( 'click', 'button.mangaperformer-button', function( e ) {
-					// Special fallback for non-mouse non-clicks that trigger click.
-					// Such as activating a focused button with a keyboard.
-					var $button = $( this );
-					if ( $button.data( 'noclick' ) ) {
-						$button.data( 'noclick', false );
-						return;
-					}
-
-					var button = $button.data( 'button' );
-					if ( _.isFunction( button.activate ) ) {
-						button.activate.call( $button[0] );
-					}
-				} )
-				.hammer()
-					// Tap gesture, handles mice, touches, pointers, etc...
-					.on( 'tap', function( ev ) {
-						var $button = $( ev.target ).closest( 'button.mangaperformer-button', this );
-						if ( !$button.length ) { return; }
-
-						// Kill a click happening after the tap
-						$button.data( 'noclick', true );
-
-						var button = $button.data( 'button' );
-						if ( _.isFunction( button.activate ) ) {
-							button.activate.call( $button[0] );
-						}
-
-						// When the button is focused as a result of pointer/touch interactions blur it when finished.
-						$button[0].blur();
-					} );
-
-			P.slider
+			P.ui.get( 'slider' )
 				.on( 'userstart', function() {
 					this.previewOn = true;
 				} )
@@ -2718,10 +3782,10 @@
 			// @todo Handle things like exiting currently playing manga/comics
 			P.enable();
 
-			P.slider.setLoaded( 0 );
+			P.ui.get( 'slider' ).setLoaded( 0 );
 			var preloader = manga.getPreloader();
 			preloader.on( 'progress', function( e ) {
-				P.slider.setLoaded( e.progress );
+				P.ui.get( 'slider' ).setLoaded( e.progress );
 			} );
 			preloader.preload();
 
@@ -2758,16 +3822,9 @@
 			if ( manga.title ) {
 				// After enabling, if manga has title set the page title to it
 				document.title = manga.title;
-				P.$title
-					.text( manga.title )
-					.attr( 'aria-hidden', 'false' )
-					.css( 'visibility', '' )
-					.css( 'display', '' );
+				P.ui.state.set( 'title', manga.title );
 			} else {
-				P.$title
-					.attr( 'aria-hidden', 'true' )
-					.css( 'visibility', 'collapse' )
-					.css( 'display', 'none' );
+				P.ui.state.set( 'title', false );
 			}
 
 			/**
@@ -2777,6 +3834,7 @@
 			 * @param {Manga} e.manga The new manga/comic being performed.
 			 */
 			P.emit( 'mangachanged', { manga: manga } );
+			P.ui.state.set( 'manga', manga );
 		},
 
 		/**
@@ -2825,7 +3883,7 @@
 			// @fixme This only adds a pane. It doesn't remove the old one or do any transitions.
 			P.setViewMode( P.viewMode );
 
-			P.slider
+			P.ui.get( 'slider' )
 				.setDirection( P.manga.rtl ? 'rtl' : 'ltr' )
 				.setSize( pane.list.length )
 				.setIndex( pane.idx )
@@ -2904,6 +3962,7 @@
 				 * @param {Performer.ViewMode} e.viewMode The new view mode.
 				 */
 				P.emit( 'viewmodechanged', { viewMode: P.viewMode } );
+				P.ui.state.set( 'viewMode', P.viewMode );
 			}
 			return oldMode;
 		},
@@ -2945,187 +4004,6 @@
 				P.emit( 'pagespreadchanged', { pageSpread: P.pageSpread } );
 			}
 			return oldSpread;
-		},
-
-		/**
-		 * Check to see if this browser supports the fullscreen API.
-		 * @return {boolean}
-		 */
-		supportsFullscreen: function() {
-			return 'fullscreenElement' in document
-				|| 'mozFullScreenElement' in document
-				|| 'webkitFullscreenElement' in document;
-		},
-
-		/**
-		 * Check to see if the document is currently fullscreen.
-		 * @return {boolean}
-		 */
-		isFullscreen: function() {
-			return document.fullscreenElement
-				|| document.mozFullScreenElement
-				|| document.webkitFullscreenElement
-				|| false;
-		},
-
-		/**
-		 * Try to enable fullscreen on the element.
-		 * @param {HTMLElement} elem The element to fullscreen.
-		 */
-		requestFullscreen: function( elem ) {
-			if ( elem.requestFullscreen ) {
-				elem.requestFullscreen();
-			} else if ( elem.mozRequestFullScreen ) {
-				elem.mozRequestFullScreen();
-			} else if ( elem.webkitRequestFullscreen ) {
-				elem.webkitRequestFullscreen( Element.ALLOW_KEYBOARD_INPUT );
-			}
-		},
-
-		/**
-		 * Exit fullscreen if in fullscreen mode.
-		 */
-		cancelFullscreen: function() {
-			if ( document.cancelFullScreen ) {
-				document.cancelFullScreen();
-			} else if ( document.mozCancelFullScreen ) {
-				document.mozCancelFullScreen();
-			} else if ( document.webkitCancelFullScreen ) {
-				document.webkitCancelFullScreen();
-			}
-		},
-
-		buttons: {
-			left: [
-				[
-					{
-						name: "pagespread-1",
-						icon: "1-page-spread",
-						label: __.f( "button.spread.1" ),
-						activate: function() {
-							var P = Performer;
-							P.setPageSpread( 1 );
-						}
-					},
-					{
-						name: "pagespread-2",
-						icon: "2-page-spread",
-						label: __.f( "button.spread.2" ),
-						activate: function() {
-							var P = Performer;
-							P.setPageSpread( 2 );
-						}
-					}
-				],
-				[
-					{
-						name: "view-pagefit",
-						icon: "fullpage-view",
-						label: __.f( "button.view.page" ),
-						activate: function() {
-							var P = Performer;
-							P.setViewMode( P.ViewMode.PAGEFIT );
-						}
-					},
-					{
-						name: "view-pagewidth",
-						icon: "pagewidth-view",
-						label: __.f( "button.view.width" ),
-						activate: function() {
-							var P = Performer;
-							P.setViewMode( P.ViewMode.PAGEWIDTH );
-						}
-					},
-					{
-						name: "view-panel",
-						icon: "panel-view",
-						label: __.f( "button.view.panel" ),
-						activate: function() {}
-					}
-				]
-			],
-			nav: [[
-				{
-					name: "prev",
-					refresh: 'mangachanged viewmodechanged',
-					icon: function() {
-						var P = Performer;
-						return P.manga && P.manga.rtl
-							? "nav-right"
-							: "nav-left";
-					},
-					label: function() {
-						var P = Performer;
-						return P.viewMode === P.ViewMode.PANEL
-							? __.t( "button.panel.prev" )
-							: __.t( "button.page.prev" );
-					},
-					activate: function() {
-						var P = Performer;
-						P.prevPane();
-					}
-				},
-				{
-					name: "next",
-					refresh: 'mangachanged viewmodechanged',
-					icon: function() {
-						var P = Performer;
-						return P.manga && P.manga.rtl
-							? "nav-left"
-							: "nav-right";
-					},
-					label: function() {
-						var P = Performer;
-						return P.viewMode === P.ViewMode.PANEL
-							? __.t( "button.panel.next" )
-							: __.t( "button.page.next" );
-					},
-					activate: function() {
-						var P = Performer;
-						P.nextPane();
-					}
-				}
-			]],
-			right: [
-				{
-					name: "overview",
-					icon: "page-overview",
-					label: __.f( "button.overview.open" ),
-					activate: function() {
-						// @fixme This could probably be a bit cleaner
-						var P = Performer;
-						PageOverview.open( P.manga );
-					}
-				},
-				{
-					name: "fullscreen",
-					refresh: 'fullscreenchange',
-					icon: function() {
-						var P = Performer;
-						return P.isFullscreen()
-							? "undo-fullscreen"
-							: "do-fullscreen";
-					},
-					label: function() {
-						var P = Performer;
-						return P.isFullscreen()
-							? __.t( "button.fullscreen.exit" )
-							: __.t( "button.fullscreen.enter" );
-					},
-					support: function() {
-						var P = Performer;
-						return P.supportsFullscreen();
-					},
-					activate: function() {
-						var P = Performer;
-						if ( P.isFullscreen() ) {
-							P.cancelFullscreen();
-						} else {
-							P.requestFullscreen( P.$root[0] );
-						}
-					}
-				}
-			]
 		}
 	};
 

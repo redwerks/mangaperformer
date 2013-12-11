@@ -19,7 +19,10 @@ UI.PaneSlider = function() {
 		.css( 'transform', 'translate3d(0,0,0)' )
 		.appendTo( S.$bar );
 };
+
+// @fixme Now that UI.Slider is a UI.Component we should find a better way to do subcomponents.
 UI.PaneSlider.prototype = create( UI.Slider.prototype );
+UI.PaneSlider.prototype.constructor = UI.PaneSlider;
 
 /**
  * Set the pane preview on display above the slider.
