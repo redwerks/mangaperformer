@@ -112,14 +112,16 @@
 	var Supports = {};
 
 	(function() {
+
+		var $test = $( '<div></div>' ),
+			testDiv = $test[0];
+
 		/**
 		 * @property {boolean}
 		 * Indicates support for SVG images in this browser.
 		 * @readonly
 		 */
 		Supports.svg = document.implementation.hasFeature( "http://www.w3.org/TR/SVG11/feature#Image", "1.1" );
-		
-		var $test = $( '<div></div>' );
 
 		/**
 		 * @property {boolean}
@@ -143,6 +145,34 @@
 			.css( 'transform', '' ) // reset
 			.css( 'transform', 'translate3d(0,0,0)' )
 			.css( 'transform' );
+
+		/**
+		 * @property {boolean}
+		 * Indicates support for CSS Transitions.
+		 * @readonly
+		 */
+		Supports.transition = false;
+
+		/**
+		 * @property {undefined|string}
+		 * Indicates what event name(s) to use for the transitionend event.
+		 * @readonly
+		 */
+		Supports.transitionEndEvents = undefined;
+
+		var transitionEndEvents = {
+			'transition'       : 'transitionend',
+			'MozTransition'    : 'transitionend',
+			'OTransition'      : 'otransitionend oTransitionEnd',
+			'WebkitTransition' : 'transitionend webkitTransitionEnd',
+			'msTransition'     : 'MSTransitionEnd'
+		};
+		for ( var propName in transitionEndEvents ) {
+			if ( propName in testDiv.style ) {
+				Supports.transition = true;
+				Supports.transitionEndEvents = transitionEndEvents[propName];
+			}
+		}
 
 	})();
 
@@ -1129,7 +1159,82 @@
 	 * @singleton
 	 * @private
 	 */
-	var UI = {};
+	var UI = {
+		/**
+		 * Set the (visual only) visibility of a DOM node.
+		 *
+		 * @param {jQuery|HTMLElement} node The DOM node.
+		 * @param {Object} o The options
+		 * @param {boolean} o.visible Whether to show or hide the node.
+		 * @private
+		 */
+		visibility: function( node, o ) {
+			var $node = $( node );
+
+			if ( o.visible ) {
+				// Show, by removing any css we added
+				$node
+					.css( 'position', '' )
+					.css( 'clip', '' );
+			} else {
+				// Hide, by ensuring position is not static and adding a clip
+				if ( $node.css( 'position' ) === 'static' ) {
+					$node.css( 'position', 'absolute' );
+				}
+				$node.css( 'clip', 'rect(1px, 1px, 1px, 1px)' );
+			}
+		},
+
+		/**
+		 * Change the css adding a transition for the changed 
+		 * properties and return a promise that will be resolved
+		 * when the animation is finished, or immediately if not
+		 * supported.
+		 *
+		 * @param {jQuery|HTMLElement} node The DOM node.
+		 * @param {Object} o A combination of transition options
+		 *                   and css properties to change, anything
+		 *                   without a defined meaning is considered
+		 *                   a css property.
+		 * @param {string} [p.duration='1s'] The duration for the transition.
+		 * @param {string} [p.timing='ease'] The timing function for the transition.
+		 * @private
+		 */
+		transition: function( node, o ) {
+			var $node = $( node ),
+				defaults = {
+					duration: '1s',
+					timing: 'ease'
+				},
+				options = _.defaults( {}, defaults, _.pick( o, _.keys( defaults ) ) ),
+				properties = _.omit( o, _.keys( defaults ) ),
+				propertyNames = _.keys( properties ),
+				d = $.Deferred();
+
+			// @todo Handle vendor prefixed properties like transform
+
+			$node
+				.css( 'transition-property', propertyNames.join( ' ' ) )
+				.css( 'transition-duration', options.duration )
+				.css( 'transition-timing-function', options.timing )
+				.css( properties );
+
+			if ( Supports.transition ) {
+				$node.one( Supports.transitionEndEvents, function( e ) {
+					$node
+						.css( 'transition-property', '' )
+						.css( 'transition-duration', '' )
+						.css( 'transition-timing-function', '' );
+
+					d.resolveWith( $node );
+				} );
+			} else {
+				d.resolveWith( $node );
+			}
+
+			return d.promise();
+		}
+	};
 
 	/**
 	 * Helper object that abstracts use of the browser's fullscreen APIs.
@@ -1211,6 +1316,150 @@
 				document.webkitCancelFullScreen();
 			}
 		}
+	};
+
+	/**
+	 * Controller for scheduling the auto-hide capabilities of a UI.
+	 * @param {Object} [o] The options.
+	 * @param {number} [o.duration=1000] Number of milliseconds to keep the UI visible.
+	 * @param {Function} [o.show] A callback to run when the UI should become visible.
+	 * @param {Function} [o.hide] A callback to run when the UI should be hidden.
+	 * @abstract
+	 */
+	UI.AutoHide = function( o ) {
+		this.options = $.extend( {
+			duration: 1000
+		}, o || {} );
+
+		this.visible = true;
+		this.timerLocked = false;
+		this.visibilityPing();
+	};
+
+	/**
+	 * Internal abstraction for hiding the UI.
+	 * @private
+	 */
+	UI.AutoHide.prototype._hide = function() {
+		if ( !this.visible || this.timerLocked ) { return; }
+		this.visible = false;
+		if ( _.isFunction( this.options.hide ) ) {
+			this.options.hide.call( undefined );
+		}
+	};
+
+	/**
+	 * Internal abstraction for showing the UI.
+	 * @private
+	 */
+	UI.AutoHide.prototype._show = function() {
+		if ( this.visible ) { return; }
+		this.visible = true;
+		if ( _.isFunction( this.options.show ) ) {
+			this.options.show.call( undefined );
+		}
+	};
+
+	/**
+	 * Perform a "ping" to visibility. If the UI is hidden it will
+	 * become visible. The timer will also be reset, delaying the
+	 * automatic hide event.
+	 */
+	UI.AutoHide.prototype.visibilityPing = function() {
+		if ( this.timerLocked ) { return; }
+		this._show();
+		this.timer = clearTimeout( this.timer );
+		this.timer = setTimeout( _.bind( this._hide, this ), this.options.duration );
+	};
+
+	/**
+	 * Hide the UI immediately, bypassing the timer.
+	 */
+	UI.AutoHide.prototype.forceHide = function() {
+		if ( this.timerLocked ) { return; }
+		this._hide();
+		this.timer = clearTimeout( this.timer );
+	};
+
+	/**
+	 * Show the UI without allowing the timer to hide the UI.
+	 */
+	UI.AutoHide.prototype.forceShow = function() {
+		if ( this.timerLocked ) { return; }
+		this._show();
+		this.timer = clearTimeout( this.timer );
+	};
+
+	/**
+	 * Show the UI and lock the visibility so the UI cannot be hidden
+	 * until the visibility has been unlocked.
+	 */
+	UI.AutoHide.prototype.lockVisible = function() {
+		if ( this.timerLocked ) { return; }
+
+		this.timerLocked = true;
+		this._show();
+		this.timer = clearTimeout( this.timer );
+	};
+
+	/**
+	 * Unlock the visibility so the UI can be hidden again.
+	 */
+	UI.AutoHide.prototype.unlockVisible = function() {
+		if ( !this.timerLocked ) { return; }
+
+		this.timerLocked = false;
+		this.visibilityPing();
+	};
+
+	/**
+	 * Setup a DOM node as a "surface" for the AutoHide controller.
+	 * Surfaces are generally large areas with primarily display
+	 * purposes. Auto hide listens to mouse move and touch tap
+	 * events on them to trigger show and hide events.
+	 * @param {jQuery} $surface The surface as a jQuery node.
+	 */
+	UI.AutoHide.prototype.addSurface = function( $surface ) {
+		var AH = this;
+		$surface
+			.on( 'mousemove', _.throttle( function() {
+				AH.visibilityPing();
+			}, 500 ) )
+			.hammer()
+				.on( 'tap', function( e ) {
+					if ( e.gesture.pointerType === 'mouse' ) { return; }
+
+					if ( AH.visible ) {
+						AH.forceHide();
+					} else {
+						AH.visibilityPing();
+					}
+				} );
+	};
+
+	/**
+	 * Setup a DOM node as an "interactive region" for the
+	 * AutoHide controller. Interactive regions are structures
+	 * containing interactive parts of the UI, typically this is
+	 * the UI to be hidden itself. Auto hide listens to mouseenter
+	 * and mouseleave events and forces the UI to remain visible
+	 * while the mouse is over the interactive region.
+	 */
+	UI.AutoHide.prototype.addInteractiveRegion = function( $x ) {
+		var AH = this;
+		$x
+			.on( 'mouseenter', function() {
+				AH.lockVisible();
+				AH.forceShow();
+			} )
+			.on( 'mouseleave', function() {
+				AH.unlockVisible();
+				// If the UI is visible when the mouse leaves re-enable the timer by doing a ping.
+				if ( AH.visible ) {
+					AH.visibilityPing();
+				}
+			} );
+
 	};
 
 	/**
@@ -2415,19 +2664,35 @@
 	UI.FloatingReaderLayout.prototype = create( UI.ReaderLayout.prototype );
 
 	/**
-	 * @
+	 * @inheritdoc
 	 */
 	UI.FloatingReaderLayout.prototype.applyTo = function( $root ) {
 		var L = this,
 			I = L.interface,
 			R = {};
 
+		L.autoHideController = new UI.AutoHide( {
+			duration: 3000,
+			show: function() {
+				UI.visibility( R.$ui, { visible: true } );
+				UI.transition( R.$ui, { opacity: 1, duration: '0.35s', timing: 'ease-out' } );
+			},
+			hide: function() {
+				UI.transition( R.$ui, { opacity: 0, duration: '0.35s', timing: 'ease-out' } )
+					.done( function() {
+						UI.visibility( this, { visible: false } );
+					} );
+			}
+		} );
+
 		I.getDOM( 'viewport' ).appendTo( $root );
+		L.autoHideController.addSurface( I.getDOM( 'viewport' ) );
 
 		/**
 		 * The UI node containing the buttons, slider, and other interface elements.
 		 */
 		R.$ui = $( '<div class="mangaperformer-ui"></div>' );
+		L.autoHideController.addInteractiveRegion( R.$ui );
 
 		/**
 		 * The node containing the hierarchy of button elements.
@@ -2471,8 +2736,10 @@
 				} );
 			} );
 		})();
-		this.setupEvents( R.$ui );
+
 		R.$buttons.appendTo( R.$ui );
+
+		this.setupEvents( R.$ui );
 
 		I.getDOM( 'slider' ).appendTo( R.$ui );
 
@@ -3231,6 +3498,7 @@
 		}
 
 		O.live = overview;
+
 		/**
 		 * @event open
 		 * Fired when a page overview is being opened/about to be displayed.

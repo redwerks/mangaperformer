@@ -77,19 +77,35 @@ UI.FloatingReaderLayout = function() {
 UI.FloatingReaderLayout.prototype = create( UI.ReaderLayout.prototype );
 
 /**
- * @
+ * @inheritdoc
  */
 UI.FloatingReaderLayout.prototype.applyTo = function( $root ) {
 	var L = this,
 		I = L.interface,
 		R = {};
 
+	L.autoHideController = new UI.AutoHide( {
+		duration: 3000,
+		show: function() {
+			UI.visibility( R.$ui, { visible: true } );
+			UI.transition( R.$ui, { opacity: 1, duration: '0.35s', timing: 'ease-out' } );
+		},
+		hide: function() {
+			UI.transition( R.$ui, { opacity: 0, duration: '0.35s', timing: 'ease-out' } )
+				.done( function() {
+					UI.visibility( this, { visible: false } );
+				} );
+		}
+	} );
+
 	I.getDOM( 'viewport' ).appendTo( $root );
+	L.autoHideController.addSurface( I.getDOM( 'viewport' ) );
 
 	/**
 	 * The UI node containing the buttons, slider, and other interface elements.
 	 */
 	R.$ui = $( '<div class="mangaperformer-ui"></div>' );
+	L.autoHideController.addInteractiveRegion( R.$ui );
 
 	/**
 	 * The node containing the hierarchy of button elements.
@@ -133,8 +149,10 @@ UI.FloatingReaderLayout.prototype.applyTo = function( $root ) {
 			} );
 		} );
 	})();
-	this.setupEvents( R.$ui );
+
 	R.$buttons.appendTo( R.$ui );
+
+	this.setupEvents( R.$ui );
 
 	I.getDOM( 'slider' ).appendTo( R.$ui );
 

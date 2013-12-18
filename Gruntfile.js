@@ -84,6 +84,7 @@ module.exports = function(grunt) {
 					'src/preloader.js',
 					'src/ui.js',
 					'src/ui/fullscreen.js',
+					'src/ui/autohide.js',
 					'src/ui/component.js',
 					'src/ui/button.js',
 					'src/ui/tooltip.js',

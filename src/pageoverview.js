@@ -199,6 +199,7 @@ PageOverview.enable = function( overview ) {
 	}
 
 	O.live = overview;
+
 	/**
 	 * @event open
 	 * Fired when a page overview is being opened/about to be displayed.

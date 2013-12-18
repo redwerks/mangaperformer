@@ -8,14 +8,16 @@
 var Supports = {};
 
 (function() {
+
+	var $test = $( '<div></div>' ),
+		testDiv = $test[0];
+
 	/**
 	 * @property {boolean}
 	 * Indicates support for SVG images in this browser.
 	 * @readonly
 	 */
 	Supports.svg = document.implementation.hasFeature( "http://www.w3.org/TR/SVG11/feature#Image", "1.1" );
-	
-	var $test = $( '<div></div>' );
 
 	/**
 	 * @property {boolean}
@@ -39,5 +41,33 @@ var Supports = {};
 		.css( 'transform', '' ) // reset
 		.css( 'transform', 'translate3d(0,0,0)' )
 		.css( 'transform' );
+
+	/**
+	 * @property {boolean}
+	 * Indicates support for CSS Transitions.
+	 * @readonly
+	 */
+	Supports.transition = false;
+
+	/**
+	 * @property {undefined|string}
+	 * Indicates what event name(s) to use for the transitionend event.
+	 * @readonly
+	 */
+	Supports.transitionEndEvents = undefined;
+
+	var transitionEndEvents = {
+		'transition'       : 'transitionend',
+		'MozTransition'    : 'transitionend',
+		'OTransition'      : 'otransitionend oTransitionEnd',
+		'WebkitTransition' : 'transitionend webkitTransitionEnd',
+		'msTransition'     : 'MSTransitionEnd'
+	};
+	for ( var propName in transitionEndEvents ) {
+		if ( propName in testDiv.style ) {
+			Supports.transition = true;
+			Supports.transitionEndEvents = transitionEndEvents[propName];
+		}
+	}
 
 })();
