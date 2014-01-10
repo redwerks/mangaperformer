@@ -67,6 +67,31 @@ var Supports = {};
 		if ( propName in testDiv.style ) {
 			Supports.transition = true;
 			Supports.transitionEndEvents = transitionEndEvents[propName];
+			break;
+		}
+	}
+
+	/**
+	 * @property {undefined|Object}
+	 * Indicates whether the Page Visibility API is supported
+	 * and what the property and event names are.
+	 * @readonly
+	 */
+	Supports.pageVisibility = undefined;
+
+	var pageVisibility = {
+		'hidden'       : 'visibilitychange',
+		'mozHidden'    : 'mozvisibilitychange',
+		'msHidden'     : 'msvisibilitychange',
+		'webkitHidden' : 'webkitvisibilitychange'
+	};
+	for ( var hiddenProp in pageVisibility ) {
+		if ( hiddenProp in document ) {
+			Supports.pageVisibility = {
+				hidden: hiddenProp,
+				visibilitychange: pageVisibility[hiddenProp]
+			};
+			break;
 		}
 	}
 

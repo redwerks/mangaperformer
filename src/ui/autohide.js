@@ -9,13 +9,26 @@
  * @abstract
  */
 UI.AutoHide = function( o ) {
-	this.options = $.extend( {
+	var AH = this;
+	AH.options = $.extend( {
 		duration: 1000
 	}, o || {} );
 
-	this.visible = true;
-	this.timerLocked = false;
-	this.visibilityPing();
+	AH.visible = true;
+	AH.timerLocked = false;
+	AH.visibilityPing();
+
+	if ( Supports.pageVisibility ) {
+		var oldPageHidden = document[Supports.pageVisibility.hidden];
+		$( document ).on( Supports.pageVisibility.visibilitychange, function( e ) {
+			var pageHidden = document[Supports.pageVisibility.hidden];
+			if ( !pageHidden && oldPageHidden ) {
+				// Show the UI when the page changes from hidden -> visible
+				AH.visibilityPing();
+			}
+			oldPageHidden = pageHidden;
+		} );
+	}
 };
 
 /**
@@ -127,19 +140,13 @@ UI.AutoHide.prototype.addSurface = function( $surface ) {
  * and mouseleave events and forces the UI to remain visible
  * while the mouse is over the interactive region.
  */
-UI.AutoHide.prototype.addInteractiveRegion = function( $x ) {
+UI.AutoHide.prototype.addInteractiveRegion = function( $interactiveRegion ) {
 	var AH = this;
-	$x
+	$interactiveRegion
 		.on( 'mouseenter', function() {
 			AH.lockVisible();
-			AH.forceShow();
 		} )
 		.on( 'mouseleave', function() {
 			AH.unlockVisible();
-			// If the UI is visible when the mouse leaves re-enable the timer by doing a ping.
-			if ( AH.visible ) {
-				AH.visibilityPing();
-			}
 		} );
-
 };

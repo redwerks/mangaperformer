@@ -171,6 +171,31 @@
 			if ( propName in testDiv.style ) {
 				Supports.transition = true;
 				Supports.transitionEndEvents = transitionEndEvents[propName];
+				break;
+			}
+		}
+
+		/**
+		 * @property {undefined|Object}
+		 * Indicates whether the Page Visibility API is supported
+		 * and what the property and event names are.
+		 * @readonly
+		 */
+		Supports.pageVisibility = undefined;
+
+		var pageVisibility = {
+			'hidden'       : 'visibilitychange',
+			'mozHidden'    : 'mozvisibilitychange',
+			'msHidden'     : 'msvisibilitychange',
+			'webkitHidden' : 'webkitvisibilitychange'
+		};
+		for ( var hiddenProp in pageVisibility ) {
+			if ( hiddenProp in document ) {
+				Supports.pageVisibility = {
+					hidden: hiddenProp,
+					visibilitychange: pageVisibility[hiddenProp]
+				};
+				break;
 			}
 		}
 
@@ -1196,13 +1221,15 @@
 		 *                   and css properties to change, anything
 		 *                   without a defined meaning is considered
 		 *                   a css property.
-		 * @param {string} [p.duration='1s'] The duration for the transition.
-		 * @param {string} [p.timing='ease'] The timing function for the transition.
+		 * @param {string} [o.duration='1s'] The duration for the transition.
+		 * @param {string} [o.timing='ease'] The timing function for the transition.
+		 * @param {boolean} [o.exclusive=false] Kill any other transition events.
 		 * @private
 		 */
 		transition: function( node, o ) {
 			var $node = $( node ),
 				defaults = {
+					exclusive: false,
 					duration: '1s',
 					timing: 'ease'
 				},
@@ -1220,6 +1247,9 @@
 				.css( properties );
 
 			if ( Supports.transition ) {
+				if ( options.exclusive ) {
+					$node.off( Supports.transitionEndEvents );
+				}
 				$node.one( Supports.transitionEndEvents, function( e ) {
 					$node
 						.css( 'transition-property', '' )
@@ -1327,13 +1357,26 @@
 	 * @abstract
 	 */
 	UI.AutoHide = function( o ) {
-		this.options = $.extend( {
+		var AH = this;
+		AH.options = $.extend( {
 			duration: 1000
 		}, o || {} );
 
-		this.visible = true;
-		this.timerLocked = false;
-		this.visibilityPing();
+		AH.visible = true;
+		AH.timerLocked = false;
+		AH.visibilityPing();
+
+		if ( Supports.pageVisibility ) {
+			var oldPageHidden = document[Supports.pageVisibility.hidden];
+			$( document ).on( Supports.pageVisibility.visibilitychange, function( e ) {
+				var pageHidden = document[Supports.pageVisibility.hidden];
+				if ( !pageHidden && oldPageHidden ) {
+					// Show the UI when the page changes from hidden -> visible
+					AH.visibilityPing();
+				}
+				oldPageHidden = pageHidden;
+			} );
+		}
 	};
 
 	/**
@@ -1445,21 +1488,15 @@
 	 * and mouseleave events and forces the UI to remain visible
 	 * while the mouse is over the interactive region.
 	 */
-	UI.AutoHide.prototype.addInteractiveRegion = function( $x ) {
+	UI.AutoHide.prototype.addInteractiveRegion = function( $interactiveRegion ) {
 		var AH = this;
-		$x
+		$interactiveRegion
 			.on( 'mouseenter', function() {
 				AH.lockVisible();
-				AH.forceShow();
 			} )
 			.on( 'mouseleave', function() {
 				AH.unlockVisible();
-				// If the UI is visible when the mouse leaves re-enable the timer by doing a ping.
-				if ( AH.visible ) {
-					AH.visibilityPing();
-				}
 			} );
-
 	};
 
 	/**
@@ -2675,10 +2712,10 @@
 			duration: 3000,
 			show: function() {
 				UI.visibility( R.$ui, { visible: true } );
-				UI.transition( R.$ui, { opacity: 1, duration: '0.35s', timing: 'ease-out' } );
+				UI.transition( R.$ui, { opacity: 1, duration: '0.35s', timing: 'ease-out', exclusive: true } );
 			},
 			hide: function() {
-				UI.transition( R.$ui, { opacity: 0, duration: '0.35s', timing: 'ease-out' } )
+				UI.transition( R.$ui, { opacity: 0, duration: '0.35s', timing: 'ease-out', exclusive: true } )
 					.done( function() {
 						UI.visibility( this, { visible: false } );
 					} );

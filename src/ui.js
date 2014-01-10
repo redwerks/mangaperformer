@@ -42,13 +42,15 @@ var UI = {
 	 *                   and css properties to change, anything
 	 *                   without a defined meaning is considered
 	 *                   a css property.
-	 * @param {string} [p.duration='1s'] The duration for the transition.
-	 * @param {string} [p.timing='ease'] The timing function for the transition.
+	 * @param {string} [o.duration='1s'] The duration for the transition.
+	 * @param {string} [o.timing='ease'] The timing function for the transition.
+	 * @param {boolean} [o.exclusive=false] Kill any other transition events.
 	 * @private
 	 */
 	transition: function( node, o ) {
 		var $node = $( node ),
 			defaults = {
+				exclusive: false,
 				duration: '1s',
 				timing: 'ease'
 			},
@@ -66,6 +68,9 @@ var UI = {
 			.css( properties );
 
 		if ( Supports.transition ) {
+			if ( options.exclusive ) {
+				$node.off( Supports.transitionEndEvents );
+			}
 			$node.one( Supports.transitionEndEvents, function( e ) {
 				$node
 					.css( 'transition-property', '' )

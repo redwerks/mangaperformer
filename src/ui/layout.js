@@ -88,10 +88,10 @@ UI.FloatingReaderLayout.prototype.applyTo = function( $root ) {
 		duration: 3000,
 		show: function() {
 			UI.visibility( R.$ui, { visible: true } );
-			UI.transition( R.$ui, { opacity: 1, duration: '0.35s', timing: 'ease-out' } );
+			UI.transition( R.$ui, { opacity: 1, duration: '0.35s', timing: 'ease-out', exclusive: true } );
 		},
 		hide: function() {
-			UI.transition( R.$ui, { opacity: 0, duration: '0.35s', timing: 'ease-out' } )
+			UI.transition( R.$ui, { opacity: 0, duration: '0.35s', timing: 'ease-out', exclusive: true } )
 				.done( function() {
 					UI.visibility( this, { visible: false } );
 				} );
